@@ -33,6 +33,23 @@ if "%_RC_SKILL_DIR%"=="" (
 
 rem ===== Step 0: Load optional config file ====================================
 
+rem Auto-discover config file from default locations when JTEST_SKILLS_CONFIG is not set
+if not defined JTEST_SKILLS_CONFIG goto :try_default_config
+if "%JTEST_SKILLS_CONFIG%"=="" goto :try_default_config
+goto :validate_config
+:try_default_config
+if exist "%CD%\jtest-skills.config" (
+    set "JTEST_SKILLS_CONFIG=%CD%\jtest-skills.config"
+    echo INFO: Using config file found at default location: %CD%\jtest-skills.config
+    goto :validate_config
+)
+if exist "%CD%\.jtest\jtest-skills.config" (
+    set "JTEST_SKILLS_CONFIG=%CD%\.jtest\jtest-skills.config"
+    echo INFO: Using config file found at default location: %CD%\.jtest\jtest-skills.config
+    goto :validate_config
+)
+goto :skip_config
+:validate_config
 if not defined JTEST_SKILLS_CONFIG goto :skip_config
 if "%JTEST_SKILLS_CONFIG%"=="" goto :skip_config
 if not exist "%JTEST_SKILLS_CONFIG%" (

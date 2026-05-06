@@ -41,6 +41,17 @@ _set_if_unset() {
 # =============================================================================
 _RECOGNIZED_KEYS="JTEST_HOME ANALYZED_PROJECT_PATH JTEST_STATIC_CONFIGURATION JTEST_COMMIT_FIXES JTEST_STATIC_FILTER_RULE JTEST_SETTINGS JTEST_STATIC_BASE_REPORT JTEST_STATIC_BASE_COVERAGE JTEST_STATIC_NO_OF_MAX_FIXES JTEST_STATIC_SCRIPT_DIR JTEST_REFERENCE_BRANCH"
 
+# Auto-discover config file from default locations when JTEST_SKILLS_CONFIG is not set
+if [ -z "${JTEST_SKILLS_CONFIG:-}" ]; then
+    if [ -f "${PWD}/jtest-skills.config" ]; then
+        JTEST_SKILLS_CONFIG="${PWD}/jtest-skills.config"
+        echo "INFO: Using config file found at default location: ${JTEST_SKILLS_CONFIG}"
+    elif [ -f "${PWD}/.jtest/jtest-skills.config" ]; then
+        JTEST_SKILLS_CONFIG="${PWD}/.jtest/jtest-skills.config"
+        echo "INFO: Using config file found at default location: ${JTEST_SKILLS_CONFIG}"
+    fi
+fi
+
 if [ -n "${JTEST_SKILLS_CONFIG:-}" ]; then
     [ -f "${JTEST_SKILLS_CONFIG}" ] || _die "JTEST_SKILLS_CONFIG points to a file that does not exist: ${JTEST_SKILLS_CONFIG}. Verify the path and retry."
 

@@ -50,7 +50,23 @@ $recognizedKeys = @(
     "JTEST_STATIC_NO_OF_MAX_FIXES", "JTEST_STATIC_SCRIPT_DIR", "JTEST_REFERENCE_BRANCH"
 )
 
+# Auto-discover config file from default locations when JTEST_SKILLS_CONFIG is not set
 $configPath = $env:JTEST_SKILLS_CONFIG
+if (-not $configPath -or $configPath -eq "") {
+    $defaultLocations = @(
+        (Join-Path $PWD "jtest-skills.config"),
+        (Join-Path $PWD ".jtest\jtest-skills.config")
+    )
+    foreach ($loc in $defaultLocations) {
+        if (Test-Path $loc -PathType Leaf) {
+            $env:JTEST_SKILLS_CONFIG = $loc
+            $configPath = $loc
+            Write-Host "INFO: Using config file found at default location: $loc"
+            break
+        }
+    }
+}
+
 if ($configPath -and $configPath -ne "") {
     if (-not (Test-Path $configPath -PathType Leaf)) {
         Die "JTEST_SKILLS_CONFIG points to a file that does not exist: $configPath. Verify the path and retry."

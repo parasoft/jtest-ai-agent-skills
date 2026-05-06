@@ -51,7 +51,23 @@ $recognizedKeys = @(
     "JTEST_UTA_RESOURCE", "JTEST_FIX_ATTEMPTS", "JTEST_UTA_NO_OF_MAX_FIXES", "JTEST_REFERENCE_BRANCH"
 )
 
+# Auto-discover config file from default locations when JTEST_SKILLS_CONFIG is not set
 $utaConfigPath = $env:JTEST_SKILLS_CONFIG
+if (-not $utaConfigPath -or $utaConfigPath -eq "") {
+    $defaultLocations = @(
+        (Join-Path $PWD "jtest-skills.config"),
+        (Join-Path $PWD ".jtest\jtest-skills.config")
+    )
+    foreach ($loc in $defaultLocations) {
+        if (Test-Path $loc -PathType Leaf) {
+            $env:JTEST_SKILLS_CONFIG = $loc
+            $utaConfigPath = $loc
+            Write-Host "INFO: Using config file found at default location: $loc"
+            break
+        }
+    }
+}
+
 if ($utaConfigPath -and $utaConfigPath -ne "") {
     if (-not (Test-Path $utaConfigPath -PathType Leaf)) {
         Die "JTEST_SKILLS_CONFIG points to a file that does not exist: $utaConfigPath. Verify the path and retry."
