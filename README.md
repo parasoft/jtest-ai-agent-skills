@@ -79,27 +79,29 @@ Before installing the integration:
 
 ### Installation
 
-Run the one-step install script from the Jtest installation directory. It copies all AI skills and agents, and configures the Jtest MCP server in your agent's configuration.
+Run the one-step install script from the `scripts` directory of this project. It copies all AI skills and agents, and configures the Jtest MCP server in your agent's configuration.
 
 **Windows (Command Prompt or PowerShell):**
 
 ```bat
-cd "[JTEST_HOME]\integration\ai\scripts"
-install.bat copilot-cli
+cd "scripts"
+install.bat --jtest.home "C:\Parasoft\jtest" copilot-cli
 ```
 
 **Linux / macOS:**
 
 ```bash
-cd "[JTEST_HOME]/integration/ai/scripts"
+cd "scripts"
 chmod +x install.sh
-./install.sh copilot-cli
+./install.sh --jtest.home /opt/parasoft/jtest copilot-cli
 ```
+
+The `--jtest.home` argument can be omitted if the `JTEST_HOME` environment variable is already set.
 
 Replace `copilot-cli` with the identifier for your agent (see the table above). Multiple agents can be installed at once:
 
 ```bat
-install.bat copilot-cli codex-cli
+install.bat --jtest.home "C:\Parasoft\jtest" copilot-cli codex-cli
 ```
 
 The installer performs these actions for each agent:
@@ -113,8 +115,8 @@ The installer performs these actions for each agent:
 | Artifact | Source | Windows destination | Linux/macOS destination |
 |---|---|---|---|
 | MCP server | `[JTEST_HOME]\integration\mcp\jtestmcp.bat` | Registered in agent config | Registered in agent config |
-| Skills | `[JTEST_HOME]\integration\ai\skills\` | `%USERPROFILE%\.copilot\skills\` *(example for Copilot)* | `~/.copilot/skills/` |
-| Sub-agent | `[JTEST_HOME]\integration\ai\agents\` | `%USERPROFILE%\.copilot\agents\` | `~/.copilot/agents/` |
+| Skills | `skills\` *(project root)* | `%USERPROFILE%\.copilot\skills\` *(example for Copilot)* | `~/.copilot/skills/` |
+| Sub-agent | `agents\` *(project root)* | `%USERPROFILE%\.copilot\agents\` | `~/.copilot/agents/` |
 
 > **Project-local skills (GitHub Copilot):** Skills can also be placed under `.github/skills/` in your repository to share configuration across a team without each developer running the installer.
 
@@ -161,7 +163,7 @@ On Windows replace the path with `<JTEST_HOME>\integration\mcp\jtestmcp.bat` and
 Copy the entire `jtest-static-analysis` skill directory (and any other skills you need) into the directory your agent reads skills from:
 
 ```
-Source:      <JTEST_HOME>/integration/ai/skills/jtest-static-analysis/
+Source:      <project-root>/skills/jtest-static-analysis/
 Destination: <agent-skills-dir>/jtest-static-analysis/
 ```
 
@@ -173,8 +175,8 @@ The `jtest-fix-violation` sub-agent is spawned by the skill to handle each indiv
 
 | File | Format | Use for |
 |---|---|---|
-| `<JTEST_HOME>/integration/ai/agents/jtest-fix-violation.md` | Markdown | Agents that load agents from `.md` files (Copilot) |
-| `<JTEST_HOME>/integration/ai/agents/jtest-fix-violation.toml` | TOML | Agents that load agents from `.toml` files (Codex CLI) |
+| `<project-root>/agents/jtest-fix-violation.md` | Markdown | Agents that load agents from `.md` files (Copilot) |
+| `<project-root>/agents/jtest-fix-violation.toml` | TOML | Agents that load agents from `.toml` files (Codex CLI) |
 
 After completing these three steps, the skill is available in your agent in the same way as for the natively supported agents.
 
@@ -213,7 +215,7 @@ Alternatively, values can be placed in an optional config file and loaded via `J
 For team or project-level configuration, copy the template and set values in a file:
 
 ```
-[JTEST_HOME]\integration\ai\jtest-skills.config.template  →  <project_root>\jtest-skills.config
+<project-root>\jtest-skills.config.template  →  <your-project>\jtest-skills.config
 ```
 
 Then point the agent to it:
@@ -307,7 +309,7 @@ For projects with non-standard builds (e.g. multi-module Maven with profiles, or
 
 **Step 1 — Create the config file**
 
-Create `.jtest\jtest-skills.config` in your project root (copy from `[JTEST_HOME]\integration\ai\jtest-skills.config.template` as a starting point) and fill in the values:
+Create `.jtest\jtest-skills.config` in your project root (copy from `<project-root>\jtest-skills.config.template` as a starting point) and fill in the values:
 
 ```properties
 # .jtest/jtest-skills.config

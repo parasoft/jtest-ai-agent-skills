@@ -5,42 +5,46 @@
 # Installs Jtest MCP tools, AI skills and AI agents into the configuration of one or
 # more supported coding agents.
 #
-# Usage: install.sh <coding-agent> [<coding-agent2> ...]
+# Usage: install.sh [--jtest.home <path>] <coding-agent> [<coding-agent2> ...]
 #
 
 set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Derive JTEST_HOME from the script location ($JTEST_HOME/integration/ai/scripts/install.sh).
-# An explicit JTEST_HOME environment variable takes precedence if already set.
-JTEST_HOME="${JTEST_HOME:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
+# AI_HOME is the parent of the scripts folder (contains skills/ and agents/).
+AI_HOME="$(cd "$SCRIPT_DIR/.." && pwd)"
 MCP_SERVER_NAME="jtestmcp"
 SUPPORTED_AGENTS="codex-cli, copilot-cli"
+JTEST_HOME="${JTEST_HOME:-}"
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 usage() {
     cat << EOF
-Usage: $SCRIPT_NAME <coding-agent> [<coding-agent2> ...]
+Usage: $SCRIPT_NAME [--jtest.home <path>] <coding-agent> [<coding-agent2> ...]
 
 Installs Parasoft Jtest MCP tools and Jtest AI skills for the specified coding agent(s).
 
   MCP tools source : \$JTEST_HOME/integration/mcp/jtestmcp
-  AI skills source : \$JTEST_HOME/integration/ai/skills
-  AI agents source : \$JTEST_HOME/integration/ai/agents
+  AI skills source : $AI_HOME/skills
+  AI agents source : $AI_HOME/agents
+
+Options:
+  --jtest.home <path>   Path to the Jtest installation directory.
+                        Can also be set via the JTEST_HOME environment variable.
 
 Supported coding agents:
   codex-cli      OpenAI Codex CLI
   copilot-cli    GitHub Copilot CLI
 
 Examples:
-  $SCRIPT_NAME copilot-cli
-  $SCRIPT_NAME codex-cli copilot-cli
+  $SCRIPT_NAME --jtest.home /opt/jtest/2025.1 copilot-cli
+  $SCRIPT_NAME --jtest.home /opt/jtest/2025.1 codex-cli copilot-cli
+  $SCRIPT_NAME copilot-cli                    (requires JTEST_HOME env var)
 
 Note:
-  JTEST_HOME is auto-detected from the script location.
-  Override it by setting the JTEST_HOME environment variable before running.
+  JTEST_HOME must be provided via --jtest.home or the JTEST_HOME environment variable.
 EOF
 }
 
@@ -51,21 +55,21 @@ check_prerequisites() {
         exit 1
     fi
 
-    if [ ! -d "$JTEST_HOME/integration/ai/skills" ]; then
-        echo "Error: Skills directory not found: $JTEST_HOME/integration/ai/skills" >&2
+    if [ ! -d "$AI_HOME/skills" ]; then
+        echo "Error: Skills directory not found: $AI_HOME/skills" >&2
         exit 1
     fi
-    if [ ! -d "$JTEST_HOME/integration/ai/agents" ]; then
-        echo "Error: agents directory not found: $JTEST_HOME/integration/ai/agents" >&2
+    if [ ! -d "$AI_HOME/agents" ]; then
+        echo "Error: Agents directory not found: $AI_HOME/agents" >&2
         exit 1
     fi
 }
 
 # Copy an agent file to the target directory.
-# $1 = source file name (relative to $JTEST_HOME/integration/ai/agents/)
+# $1 = source file name (relative to $AI_HOME/agents/)
 # $2 = target agents directory
 copy_agent() {
-    local src_file="$JTEST_HOME/integration/ai/agents/$1"
+    local src_file="$AI_HOME/agents/$1"
     local target_dir="$2"
 
     if [ ! -f "$src_file" ]; then
@@ -82,7 +86,7 @@ copy_agent() {
 # $1 = target skills directory
 copy_skills() {
     local target_dir="$1"
-    local src="$JTEST_HOME/integration/ai/skills"
+    local src="$AI_HOME/skills"
 
     if [ ! -d "$src" ]; then
         return
@@ -195,6 +199,38 @@ EOF
 if [ $# -eq 0 ]; then
     usage
     exit 0
+fi
+
+# ── Pre-parse: extract --jtest.home and collect remaining arguments ───────────
+remaining_args=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --jtest.home)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: --jtest.home requires a path value" >&2
+                exit 1
+            fi
+            JTEST_HOME="$2"
+            shift 2
+            ;;
+        *)
+            remaining_args+=("$1")
+            shift
+            ;;
+    esac
+done
+set -- "${remaining_args[@]+"${remaining_args[@]}"}"
+
+if [ $# -eq 0 ]; then
+    usage
+    exit 0
+fi
+
+# ── Validate JTEST_HOME ───────────────────────────────────────────────────────
+if [ -z "$JTEST_HOME" ]; then
+    echo "Error: JTEST_HOME is not set." >&2
+    echo "       Provide it via --jtest.home <path> or set the JTEST_HOME environment variable." >&2
+    exit 1
 fi
 
 check_prerequisites
