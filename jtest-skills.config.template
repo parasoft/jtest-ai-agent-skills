@@ -1,0 +1,85 @@
+# =============================================================================
+# jtest-skills.config  —  Optional configuration file for the Jtest skills (jtest-static-analysis and jtest-unit-testing)
+#
+# Pass the path to this file via the JTEST_SKILLS_CONFIG environment variable:
+#
+#   Windows (PowerShell):  $env:JTEST_SKILLS_CONFIG = "C:\path\to\jtest-skills.config"
+#   Windows (cmd):         set JTEST_SKILLS_CONFIG=C:\path\to\jtest-skills.config
+#   Linux/macOS:           export JTEST_SKILLS_CONFIG=/path/to/jtest-skills.config
+#
+# Format rules:
+#   - One key=value pair per line
+#   - Lines starting with # are treated as comments and ignored
+#   - Blank lines are ignored
+#   - Keys must exactly match the environment variable names listed below
+#   - Values must NOT be quoted (no surrounding " or ' characters)
+#   - Values defined here are loaded BEFORE environment variables are read,
+#     so an environment variable always overrides the same key in this file
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Required settings
+# -----------------------------------------------------------------------------
+
+# Path to the Jtest installation directory.
+# Windows example: JTEST_HOME=C:\Parasoft\jtest
+# Linux/macOS example: JTEST_HOME=/opt/parasoft/jtest
+#JTEST_HOME=
+
+# Absolute path to the Java project root to analyse.
+# Windows example: ANALYZED_PROJECT_PATH=C:\projects\myapp
+# Linux/macOS example: ANALYZED_PROJECT_PATH=/home/user/myapp
+#ANALYZED_PROJECT_PATH=
+
+# -----------------------------------------------------------------------------
+# Optional settings
+# -----------------------------------------------------------------------------
+
+# Test configuration to use for static analysis.
+# Defaults to: builtin://Recommended Rules
+#JTEST_STATIC_CONFIGURATION=builtin://Recommended Rules
+
+# Test configuration to use for unit tests generation.
+# Defaults to: builtin://Create Unit Tests
+#JTEST_UTA_CONFIGURATION=builtin://Create Unit Tests
+
+# Set to true to commit each successful fix as a Git commit.
+# Any other value (or absence) leaves fixes as local uncommitted changes.
+#JTEST_COMMIT_FIXES=false
+
+# Comma-separated list of rule IDs to process. When set, only violations
+# matching these IDs are fixed. Leave unset to process all violations.
+#JTEST_STATIC_FILTER_RULE=
+
+# Absolute path to a Jtest settings file (.properties).
+# When set, adds -Djtest.settings=<path> to all analysis commands.
+#JTEST_SETTINGS=
+
+# Absolute path to a base report.xml file.
+# When set, used as the reference report for incremental/differential analysis.
+#JTEST_STATIC_BASE_REPORT=
+
+# Absolute path to a base coverage.xml file.
+# When set, used as the reference coverage data for incremental/differential analysis.
+#JTEST_STATIC_BASE_COVERAGE=
+
+# Absolute path to a directory containing the build-verify and jtest-analyze for jtest-static-analysis skill
+# scripts. Defaults to the scripts/ subdirectory next to SKILL.md when not set.
+# Override to provide project-specific scripts for complex or non-standard builds.
+# See the SKILL.md "Script Execution Mode" section for the required script names.
+#JTEST_STATIC_SCRIPT_DIR=
+#JTEST_UTA_SCRIPT_DIR=
+
+# Number of additional attempts to fix the particular failing test or test with error in post creation phase.
+# If corresponding subskill for test fix is invoked the first attempt to fix a test is always invoked.
+# This setting indicate how much additional tries should be made to fix the test.
+
+JTEST_FIX_ATTEMPTS=3
+
+# This setting introduce a limit for the number of tests that should be fixed during running session.
+# If this setting is not set, it will be made a try to fix all tests that do not pass.
+JTEST_STATIC_NO_OF_MAX_FIXES=10
+JTEST_UTA_NO_OF_MAX_FIXES=50
+
+# Name of the branch which is used as a reference branch. Only differences between current branch and the reference branch will be analyzed
+#JTEST_REFERENCE_BRANCH=main

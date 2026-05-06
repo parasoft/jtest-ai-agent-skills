@@ -1,0 +1,27 @@
+-resources %RESOURCE% (Settings pattern: jtest.resources=%RESOURCE% (comma separated list))
+    Narrows down the primary testing scope defined in the JSON data file.
+    The general resource pattern is:[project name]/[resource path relative to the project]
+    Use multiple -resource switches to specify multiple resources. Use quotation marks when
+    the resource path contains spaces or other non-alphanumeric characters.
+    Use the wildcard '?' to match one character (excludes a path separator).
+    Use the wildcard '*'  to match zero or more characters (excludes a path separator).
+    Use the wildcard '**' to match paths (includes a path separators).
+    Examples:
+      -resources ProjectName
+          Analyzes every file from the selected project (specified in the JSON file)
+      -resources ProjectName/src
+          Analyzes every file in the selected directory and subdirectories.
+      -resources ProjectName/**/*.java
+          Analyzes every Java file from the selected project.
+      -resources **/src/main/java/my/company/*.java
+          Analyzes every Java file from the specific subdirectory
+          of every project in the current build.
+      -resources ProjectName/src/main/java/my/company/File.java
+          Analyzes the single specified resource.
+      -resources c:/resource.lst
+          Analyzes the projects listed in the resource.lst file.
+                  You can specify multiple project names in one resource.lst file.
+                  Provide one project name per line; each line is treated as a single pattern.
+              ProjectName1
+              ProjectName2
+                  It has the same effect as specifying: -resource ProjectName1 -resource ProjectName2
