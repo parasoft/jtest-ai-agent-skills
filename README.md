@@ -239,7 +239,16 @@ For team or project-level configuration, copy the template and set values in a f
 <project-root>\jtest-skills.config.template  →  <your-project>\jtest-skills.config
 ```
 
-Then point the agent to it:
+Setting `JTEST_SKILLS_CONFIG` is **optional**. The skills automatically discover the config file from two default locations (checked in order) when the variable is not set:
+
+| Priority | Default location | Example |
+|---|---|---|
+| 1 | Current working directory | `<cwd>/jtest-skills.config` |
+| 2 | `.jtest` subfolder of the current directory | `<cwd>/.jtest/jtest-skills.config` |
+
+If neither default location contains the file and `JTEST_SKILLS_CONFIG` is not set, the skills rely entirely on environment variables.
+
+To use a config file in a **non-default location**, point the agent to it explicitly:
 
 ```powershell
 # Windows PowerShell
