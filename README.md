@@ -1,9 +1,9 @@
-# Fixing Violations Using AI Coding Agents with Jtest AI Solutions
+# Fixing Violations and Improving Test Coverage Using AI Coding Agents with Jtest AI Solutions
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [What You Can Achieve with jtest-static-analysis](#what-you-can-achieve-with-jtest-static-analysis)
+2. [What You Can Achieve with jtest-static-analysis and jtest-unit-testing](#what-you-can-achieve-with-jtest-static-analysis-and-jtest-unit-testing)
 3. [Integrating Jtest AI Solutions with Your Coding Agent](#integrating-jtest-ai-solutions-with-your-coding-agent)
    - [Prerequisites](#prerequisites)
    - [Installation](#installation)
@@ -15,10 +15,12 @@
    - [Configuration File](#configuration-file)
 5. [Usage Examples](#usage-examples)
    - [Example 1: Basic Full-Project Analysis](#example-1-basic-full-project-analysis)
-   - [Example 2: Scoped Analysis — Single Package or File](#example-2-scoped-analysis--single-package-or-file)
-   - [Example 3: Custom Script Directory and Settings File](#example-3-custom-script-directory-and-settings-file)
-   - [Example 4: Test Impact Analysis for Large Projects](#example-4-test-impact-analysis-for-large-projects)
-6. [Best Practices for Reviewing AI-Applied Fixes](#best-practices-for-reviewing-ai-applied-fixes)
+   - [Example 2: Increase Test Coverage with Unit Test Generation](#example-2-increase-test-coverage-with-unit-test-generation)
+   - [Example 3: Scoped Analysis — Single Package or File](#example-3-scoped-analysis--single-package-or-file)
+   - [Example 4: Custom Script Directory and Settings File](#example-4-custom-script-directory-and-settings-file)
+   - [Example 5: Test Impact Analysis for Large Projects](#example-5-test-impact-analysis-for-large-projects)
+   - [Example 6: Combined Workflow — Violations Then Coverage](#example-6-combined-workflow--violations-then-coverage)
+6. [Best Practices for Reviewing AI-Applied Changes](#best-practices-for-reviewing-ai-applied-changes)
 7. [Security Considerations](#security-considerations)
    - [Use Coding Agents Responsibly](#use-coding-agents-responsibly)
    - [Grant Only Necessary Tool Access](#grant-only-necessary-tool-access)
@@ -34,9 +36,11 @@
 
 ## Overview
 
-Parasoft Jtest AI Solutions extend your AI coding agent with the ability to detect and automatically fix Java static analysis violations. The integration is built around the **`jtest-static-analysis` skill** — a non-interactive, fully autonomous workflow that drives Jtest analysis, collects violations, delegates each fix to a specialized sub-agent, verifies the result, and optionally commits the change.
+Parasoft Jtest AI Solutions extend your AI coding agent with two complementary Java workflows: **`jtest-static-analysis`** for detecting and repairing static analysis violations, and **`jtest-unit-testing`** for generating and post-processing unit tests to improve coverage while keeping the project in a passing state.
 
-The skill works with any Maven or Gradle Java project and integrates with the following coding agents:
+Both skills are non-interactive, environment-variable driven, and designed for Maven or Gradle Java projects. They can be run independently, but they are typically most effective when used together: first fix priority violations, then generate or update tests around changed code.
+
+The skills integrate with the following coding agents:
 
 | Coding Agent | Identifier |
 |---|---|
@@ -45,7 +49,7 @@ The skill works with any Maven or Gradle Java project and integrates with the fo
 
 ---
 
-## What You Can Achieve with jtest-static-analysis
+## What You Can Achieve with jtest-static-analysis and jtest-unit-testing
 
 The `jtest-static-analysis` skill enables end-to-end automated static analysis and repair:
 
@@ -53,16 +57,27 @@ The `jtest-static-analysis` skill enables end-to-end automated static analysis a
 - **Collect violations** from the generated report, filter by severity, rule, or file scope, and rank them in prioritized order.
 - **Fix violations automatically** — the skill delegates each fix to the `jtest-fix-violation` sub-agent, which applies the change, re-runs the build and tests, and retries on failure (up to 3 attempts).
 - **Verify fixes** by re-running Jtest analysis incrementally after each change and comparing against the baseline report — the same violation must be gone and no new violations introduced.
+
+The `jtest-unit-testing` skill enables end-to-end automated unit test generation and post-processing:
+
+- **Run test creation** against your Java project to generate new unit tests for selected scope.
+- **Post-process created tests** to obtain the final set of new test and keep the project in a clean passing state.
+- **Limit scope** to a package, file, module, or branch diff so test generation targets only the code you care about.
+- **Control how much may be fixed** using `JTEST_FIX_ATTEMPTS` and `JTEST_UTA_NO_OF_MAX_FIXES` to keep token usage under control.
+
+### Common features
+
 - **Commit fixes** individually as separate Git commits when `JTEST_COMMIT_FIXES=true` is set, giving you a clean, reviewable history.
-- **Limit scope** to a package, file, module, or branch diff so the agent only touches the code you care about.
-- **Operate autonomously in CI/CD** — the skill never prompts for user input; all settings are supplied via config file or environment variables.
+- **Limit scope** to a package, file, module, or branch diff so the agent changes only the code you target.
+- **Operate autonomously in CI/CD** — no interactive prompts are required during execution; all settings are supplied via config file or environment variables.
 
-### What the skill does NOT do
+### What the skills do NOT do
 
-- It never suppresses a violation using `@SuppressWarnings` or any similar mechanism. Every fix must resolve the root cause.
-- It never mixes multiple violation fixes into a single commit.
-- It does not create any branches or pull requests on its own — it only commits to the currently checked-out branch. Branch management is left to the user or CI pipeline.
-- It never modifies build scripts, documentation files or any other files unrelated with change — only Java source files strictly needed to fix a violation.
+- **`jtest-static-analysis`** never suppresses a violation using `@SuppressWarnings` or any similar mechanism. Every fix must resolve the root cause.
+- **`jtest-static-analysis`** never mixes multiple violation fixes into a single commit.
+- **`jtest-unit-testing`** does not modify production source files — it only works with unit tests in order to increase coverage.
+- **the skills** do not create branches or pull requests on their own — they only commit to the currently checked-out branch. Branch management is left to the user or CI pipeline.
+- **the skills** do not modify build scripts, documentation files, or other unrelated files; they only change files directly required by the active workflow.
 
 ---
 
@@ -107,7 +122,7 @@ install.bat --jtest.home "C:\Parasoft\jtest" copilot-cli codex-cli
 The installer performs these actions for each agent:
 
 1. Writes or updates the `jtestmcp` MCP server entry in the agent's configuration file.
-2. Copies all skills (including `jtest-static-analysis`) to the agent's user-level skills directory.
+2. Copies all skills (including `jtest-static-analysis` and `jtest-unit-testing`) to the agent's user-level skills directory.
 3. Copies the `jtest-fix-violation` sub-agent definition to the agent's agents directory.
 
 #### What gets installed and where
@@ -160,16 +175,19 @@ On Windows replace the path with `<JTEST_HOME>\integration\mcp\jtestmcp.bat` and
 
 #### Step 2 — Copy the skills
 
-Copy the entire `jtest-static-analysis` skill directory (and any other skills you need) into the directory your agent reads skills from:
+Copy the entire required skill directories into the directory your agent reads skills from:
 
 ```
 Source:      <project-root>/skills/jtest-static-analysis/
 Destination: <agent-skills-dir>/jtest-static-analysis/
+
+Source:      <project-root>/skills/jtest-unit-testing/
+Destination: <agent-skills-dir>/jtest-unit-testing/
 ```
 
-The skill directory must contain `SKILL.md` and the `scripts/` subdirectory. Copy the content recursively so all supporting scripts are included.
+Each skill directory must contain `SKILL.md` and its supporting subdirectories. Copy content recursively.
 
-#### Step 3 — Copy the sub-agent definition
+#### Step 3 — Copy the sub-agent definition (static-analysis only)
 
 The `jtest-fix-violation` sub-agent is spawned by the skill to handle each individual fix. Copy the appropriate agent definition file into the directory your agent reads agents from:
 
@@ -199,6 +217,7 @@ Alternatively, values can be placed in an optional config file and loaded via `J
 | Variable | Default | Description |
 |---|---|---|
 | `JTEST_STATIC_CONFIGURATION` | `builtin://Recommended Rules` | Test configuration name. Use any built-in profile or a path to a custom `.properties` configuration. Common built-ins: `builtin://Recommended Rules`, `builtin://CWE Top 25 + On the Cusp 2025`. |
+| `JTEST_UTA_CONFIGURATION` | `builtin://Create Unit Tests` | Test configuration name for `jtest-unit-testing` UTA test creation. |
 | `JTEST_COMMIT_FIXES` | `false` | Set to `true` to automatically commit each successful fix as a separate Git commit. |
 | `JTEST_STATIC_FILTER_RULE` | *(all rules)* | Comma-separated rule IDs to process. When set, only violations matching these IDs are fixed. Example: `BD.RES.LEAKS,OWASP2021.A05.SQLI`. |
 | `JTEST_SETTINGS` | *(none)* | Absolute path to a Jtest settings `.properties` file. Adds `-Djtest.settings=<path>` to all analysis commands. |
@@ -206,8 +225,10 @@ Alternatively, values can be placed in an optional config file and loaded via `J
 | `JTEST_STATIC_BASE_COVERAGE` | *(none)* | Absolute path to an existing `coverage.xml`. Used together with `JTEST_STATIC_BASE_REPORT` to enable TIA (test-impact analysis) in the build-verify step — only tests affected by the changed code are re-run, significantly reducing build times for large projects. |
 | `JTEST_STATIC_NO_OF_MAX_FIXES` | `10` | Maximum number of successful fixes in one session. Overridden by an explicit number in the agent prompt (e.g. "fix 5 violations"). |
 | `JTEST_STATIC_SCRIPT_DIR` | `<skill_dir>/scripts` | Absolute path to the directory containing `build-verify` and `jtest-analyze` scripts. Override for projects that need a custom build or non-standard Maven/Gradle setup. |
+| `JTEST_UTA_SCRIPT_DIR` | `<skill_dir>/scripts` | Absolute path to the directory containing `build-verify` and `jtest-analyze` scripts for `jtest-unit-testing`. Override for projects that need a custom build or non-standard Maven/Gradle setup. |
+| `JTEST_UTA_NO_OF_MAX_FIXES` | *(none)* | Maximum number of test fixes/removals in one `jtest-unit-testing` session. Must be set to a positive number to activate this phase. |
 | `JTEST_REFERENCE_BRANCH` | *(none)* | Git branch name used as a reference. When set, only violations introduced relative to this branch are analysed. Example: `main`. |
-| `JTEST_FIX_ATTEMPTS` | `3` | Number of additional retry attempts for each failing fix before it is recorded as a failure. |
+| `JTEST_FIX_ATTEMPTS` | `3` | Number of additional retry attempts when post-processing failing tests in `jtest-unit-testing`. Affects both fixing static violations and failing tests separately. |
 | `JTEST_SKILLS_CONFIG` | *(none)* | Absolute path to a `key=value` config file. Settings in this file are loaded before environment variables, so environment variables always take precedence. |
 
 ### Configuration File
@@ -266,7 +287,37 @@ After each fix, verify the build and re-run Jtest analysis to confirm the violat
 
 ---
 
-### Example 2: Scoped Analysis — Single Package or File
+### Example 2: Increase Test Coverage with Unit Test Generation
+
+Use `jtest-unit-testing` to automatically generate JUnit tests and increase code coverage for an existing project. The skill runs Jtest UTA, collects the generated tests, compiles and runs them, and fixes any failing tests up to the configured limit.
+
+**Windows (PowerShell):**
+
+```powershell
+$env:JTEST_HOME              = "C:\Parasoft\jtest"
+$env:ANALYZED_PROJECT_PATH   = "C:\projects\myapp"
+$env:JTEST_FIX_ATTEMPTS      = "3"
+$env:JTEST_COMMIT_FIXES      = "false"
+```
+
+**Linux/macOS:**
+
+```bash
+export JTEST_HOME="/opt/parasoft/jtest"
+export ANALYZED_PROJECT_PATH="/home/user/myapp"
+export JTEST_FIX_ATTEMPTS="3"
+export JTEST_COMMIT_FIXES="false"
+```
+
+**Agent prompt:**
+
+```
+Use jtest-unit-testing to increase test coverage for the project.
+```
+
+---
+
+### Example 3: Scoped Analysis — Single Package or File
 
 Restrict analysis to a specific package or file to keep the session focused and minimise build times.
 
@@ -286,6 +337,10 @@ in package com.example.payment. Commit each fix separately.
 Fix at most 3 violations.
 ```
 
+```
+Use jtest-unit-testing to generate unit tests for the com.example.payment package.
+```
+
 **Analyse only a single file:**
 
 ```
@@ -303,7 +358,7 @@ The skill automatically translates natural-language scope expressions into `-Djt
 
 ---
 
-### Example 3: Custom Script Directory and Settings File
+### Example 4: Custom Script Directory and Settings File
 
 For projects with non-standard builds (e.g. multi-module Maven with profiles, or Gradle with custom tasks), supply project-specific `build-verify` and `jtest-analyze` scripts. In this example all settings are kept in a project-local config file so only a single environment variable needs to be set in the shell.
 
@@ -364,7 +419,7 @@ rule violations only. Commit each fix.
 
 ---
 
-### Example 4: Test Impact Analysis for Large Projects
+### Example 5: Test Impact Analysis for Large Projects
 
 For large projects, running the full test suite before and after every fix can be prohibitively slow. Jtest supports **Test Impact Analysis (TIA)**, which uses a baseline coverage snapshot to determine which tests are actually affected by a code change and runs only those tests. This can reduce build-verify time dramatically.
 
@@ -443,13 +498,56 @@ After a batch of fixes is reviewed and merged, regenerate the baseline by repeat
 
 ---
 
-## Best Practices for Reviewing AI-Applied Fixes
+### Example 6: Combined Workflow — Violations Then Coverage
+
+Run both skills in sequence: first fix highest-priority static analysis violations, then generate unit tests to raise coverage around changed code.
+
+**Windows (PowerShell):**
+
+```powershell
+$env:JTEST_HOME                  = "C:\Parasoft\jtest"
+$env:ANALYZED_PROJECT_PATH       = "C:\projects\myapp"
+$env:JTEST_STATIC_CONFIGURATION  = "builtin://Recommended Rules"
+$env:JTEST_STATIC_NO_OF_MAX_FIXES= "5"
+$env:JTEST_UTA_CONFIGURATION     = "builtin://Create Unit Tests"
+$env:JTEST_UTA_NO_OF_MAX_FIXES   = "10"
+$env:JTEST_FIX_ATTEMPTS          = "3"
+$env:JTEST_COMMIT_FIXES          = "false"
+```
+
+**Linux/macOS:**
+
+```bash
+export JTEST_HOME="/opt/parasoft/jtest"
+export ANALYZED_PROJECT_PATH="/home/user/myapp"
+export JTEST_STATIC_CONFIGURATION="builtin://Recommended Rules"
+export JTEST_STATIC_NO_OF_MAX_FIXES="5"
+export JTEST_UTA_CONFIGURATION="builtin://Create Unit Tests"
+export JTEST_UTA_NO_OF_MAX_FIXES= "10"
+export JTEST_FIX_ATTEMPTS="3"
+export JTEST_COMMIT_FIXES="false"
+```
+
+**Agent prompt:**
+
+```
+Use jtest-static-analysis to fix severity 1 and severity 2 violations. Then use jtest-unit-testing to increase coverage in the project.
+```
+
+---
+
+## Best Practices for Reviewing AI-Applied Changes
 
 AI-generated fixes are applied one at a time, verified by the build and Jtest re-analysis, and (when `JTEST_COMMIT_FIXES=true`) committed with descriptive messages. Still, human review is essential.
 
 ### Read the commit messages
 
-Each commit message generated by the `jtest-fix-violation` agent describes the rule that was violated, the file and line, and the change applied. Read these before merging to understand what was changed and why. A well-formed commit message looks like:
+Read all agent-generated commits before merging to understand exactly what changed and why.
+
+- For `jtest-static-analysis`, each commit describes the violated rule.
+- For `jtest-unit-testing` each commit should contain only generated/updated tests and related post-processing changes.
+
+A static-analysis commit message typically looks like this:
 
 ```
 Fix BD.RES.LEAKS violation in PaymentService.java:47
@@ -460,7 +558,10 @@ Jtest rule: BD.RES.LEAKS (severity 1)
 
 ### Check the code quality
 
-Verify that each fix follows your team's coding standards — naming conventions, error handling patterns, logging style, and architectural boundaries. An AI fix that technically resolves the violation may still introduce patterns that conflict with your codebase conventions.
+Verify that each change follows your team's standards  — naming conventions, error handling patterns, logging style, and architectural boundaries. For example AI fix that technically resolves the violation may still introduce patterns that conflict with your codebase conventions.
+
+- For `jtest-static-analysis`, confirm the violation is truly resolved without behavior regressions.
+- For `jtest-unit-testing`, confirm tests are readable, deterministic, and validate meaningful behavior rather than implementation details.
 
 ### Apply incremental fixes for minor remaining issues
 
@@ -468,7 +569,7 @@ If a fix is mostly correct but needs a small adjustment (e.g. a log message phra
 
 ### Revert when the fix is fundamentally wrong
 
-If an AI-generated fix introduces logic errors, breaks a business invariant, or changes semantics in an unacceptable way — revert the entire commit:
+If an AI-generated fix introduces logic errors, breaks a business invariant, changes semantics in an unacceptable way or invalidates test intent — revert the entire commit:
 
 ```bash
 git revert <commit-sha>
@@ -478,7 +579,7 @@ Do not attempt to partially fix a fundamentally broken change. A clean revert is
 
 ### Use a branching strategy
 
-Never run automated fixes directly on `main` or a release branch. Use a dedicated feature or fix branch:
+Never run automated changes directly on `main` or a release branch. Use a dedicated branch:
 
 ```bash
 git checkout -b fix/jtest-violations
@@ -495,18 +596,19 @@ git cherry-pick <commit-sha>
 
 This isolates AI-generated changes and gives the team a natural review gate before they reach the protected branch.
 
-### Do not fix all violations at once
+### Do not process everything at once
 
-Limit the scope of each agent session. Processing all violations in one run makes review impractical, increases the risk of conflicts, and makes it harder to bisect if something goes wrong. Instead:
+Limit the scope of each agent session. Processing all violations in one run makes review impractical, increases conflicts, and makes bisection harder. Instead:
 
 - Set `JTEST_STATIC_NO_OF_MAX_FIXES` to a small number (5–10) per session.
-- Scope the analysis to a single package or module per run.
+- Set `JTEST_UTA_NO_OF_MAX_FIXES` and `JTEST_FIX_ATTEMPTS` to bounded values for test-generation post-processing sessions to lower the cost of time and resources.
+- Scope each run to a package, module, file, or diff-focused subset.
 - Prioritise severity-1 and severity-2 violations first, then revisit lower-severity items in subsequent sessions.
 - Review and merge each batch before starting the next.
 
 ### Verify test coverage is maintained
 
-After merging a batch of fixes, check that code coverage has not dropped. If the `jtest-unit-testing` skill is installed, run it after a static-analysis session to generate or update unit tests covering the changed code.
+After merging a batch of fixes, check that code coverage has not dropped. If the `jtest-unit-testing` skill is installed, utilise it after a static-analysis session to generate or update unit tests covering the changed code.
 
 ### Keep the baseline report up to date
 
@@ -529,14 +631,16 @@ Treat a coding agent the same way you treat any automation that has write access
 
 ### Grant Only Necessary Tool Access
 
-Configure your agent to expose only the MCP tools it actually needs for the `jtest-static-analysis` workflow. Granting access to all available tools increases the attack surface unnecessarily.
+Configure the agent to expose only the MCP tools it actually needs for your workflow. Granting access to all available tools increases the attack surface unnecessarily.
 
-The minimum set of MCP tools required by this skill is:
+For `jtest-static-analysis`, the minimum MCP tool set is:
 
 | Tool | Purpose |
 |---|---|
 | `get_violations_from_report_file` | Read violations from the Jtest report |
 | `get_rule_documentation` | Look up rule details when reasoning about a fix |
+
+`jtest-unit-testing` does not require any additional tool access beyond the scripts and file operations needed to generate and post-process tests.
 
 ### Restrict the Agent to Specific Folders
 
@@ -544,31 +648,33 @@ Where your agent supports folder or file-system sandboxing, configure it to oper
 
 **General principles:**
 
-- Allow read/write access to `src/` (or your project's source root).
+- Allow read/write access to source and test folder roots of your project
 - Allow read-only access to build output directories if the agent needs to inspect compiled artifacts.
 - Deny access to `.git/config`, CI pipeline definitions (`.github/`, `.gitlab-ci.yml`, `Jenkinsfile`), environment files (`.env`, `*.secret`), and any directory containing credentials or certificates.
-- If your agent supports an allowlist of file extensions, restrict writes to `.java` files only — the `jtest-fix-violation` agent must never need to modify any other file type.
+- If your agent supports an allowlist of file extensions, restrict writes to `.java` test/source files only. `jtest-static-analysis` should modify only source files required to resolve violations, while `jtest-unit-testing` should modify only generated/updated test files for the active session.
 
 ### Configuring Git Commit Access for Codex CLI
 
-By default, Codex CLI requires explicit permission rules before allowing shell commands. To let the `jtest-fix-violation` agent commit its fixes, add a rule to the Codex rules file.
+By default, Codex CLI requires explicit permission rules before allowing shell commands. To let skill workflows commit the changes, add constrained rules to the Codex rules file.
 
 Create or append to `$HOME/.codex/rules/default.rules`:
 
 ```python
-# Allow git commit to save fixes made by Codex
+# Allow git commit to save skill-generated changes made by Codex
 prefix_rule(
     pattern      = ["git", "commit"],
     decision     = "allow",
-    justification = "Allow git commit so Codex can commit violation fixes",
+    justification = "Allow git commit so Codex can commit violation fixes and generated tests",
     match = [
         "git commit -m \"fix violations\"",
         "git commit --all -m \"autofix\"",
+        "git commit -m \"add UTA generated tests\"",
+        "git commit -m \"add UTA fixed tests\"",
     ],
 )
 ```
 
-This rule uses `prefix_rule` to match any `git commit` invocation whose command line begins with `git commit`, while the `match` list further restricts approval to the specific commit message patterns used by the `jtest-fix-violation` agent. Commands that do not match the `match` patterns are not covered by this rule and will still require interactive approval.
+This rule uses `prefix_rule` to match any `git commit` invocation whose command line begins with `git commit`, while the `match` list further restricts approval to the message patterns used in your approved workflows. Commands that do not match remain interactive.
 
 > **Tip:** Keep the `match` list as specific as possible. Avoid wildcard patterns such as `"git commit *"` that would silently approve any commit message the agent might produce outside the expected fix workflow.
 
@@ -580,7 +686,7 @@ Other git operations that the agent does **not** need — such as `git push`, `g
 
 ### CI/CD Pipeline Overview
 
-Integrating Jtest AI Solutions into your CI/CD pipeline allows you to automatically detect and fix static analysis violations as part of your normal development workflow. Below is a recommended workflow that balances automation with developer oversight.
+Integrating Jtest AI Solutions into your CI/CD pipeline allows you to automatically detect and fix static-analysis violations, then improve test coverage with generated tests. Below is a recommended workflow that balances automation with developer oversight.
 
 ### Pipeline Stages
 
@@ -594,15 +700,16 @@ The pull request triggers the build machine to automatically start the integrati
 
 - **Build Project** — source code is compiled and artifacts are produced.
 - **Run Tests** — the full suite of unit and integration tests is executed to ensure functional correctness.
-- **Jtest Security Scan** — static analysis is performed using Jtest to identify security vulnerabilities and compliance violations (see [Configuration Reference](#configuration-reference) for available test configurations).
+- **Jtest Analysis and Unit Test Creation** — static analysis is performed to identify violations; the same stage can end with unit-test generation (see [Configuration Reference](#configuration-reference)).
 
 **3. Automated AI Remediation (conditional)**
 
-If violations are found during the Jtest scan, the pipeline branches into an automated remediation flow:
+If violations are found, or coverage gates are not met, the pipeline enters an automated remediation flow:
 
 - **Create New Branch** — a dedicated branch is created from the feature branch to contain the AI's fixes, keeping the original branch clean.
 - **Trigger AI Coding Agent** — the `jtest-static-analysis` skill is activated with the Jtest report as its baseline (`JTEST_STATIC_BASE_REPORT`), so no second full analysis is needed.
 - **Fix Violations** — the agent processes violations in priority order, applies fixes, and verifies each one with a targeted build and re-analysis.
+- **Generate Unit Tests** — run `jtest-unit-testing` to increase coverage around changed code and keep the project passing.
 - **Commit Fixed Code** — each verified fix is committed as a separate, descriptive Git commit to the AI branch.
 
 **4. Developer Review and Re-integration**
@@ -631,6 +738,7 @@ The same pattern applies to Jenkins, GitLab CI, Azure DevOps, and other systems.
 - Jtest is available on the runner (via installation, container image, or mounted volume).
 - The coding agent CLI is installed on the runner.
 - The `JTEST_HOME` and `ANALYZED_PROJECT_PATH` environment variables are set.
+- Skill-specific configuration is set for the intended stage (`JTEST_STATIC_CONFIGURATION` and/or `JTEST_UTA_CONFIGURATION`).
 - The runner has a Git identity configured for commits.
 - The `GITHUB_TOKEN` (or equivalent) has write permission to push branches and open pull requests.
 
@@ -644,11 +752,12 @@ For **nightly full-project scans**, schedule the workflow on a cron trigger and 
 `SKILL_DEMO.md` (located alongside this guide in `[JTEST_HOME]/integration/ai/`) provides a step-by-step tutorial that walks you through:
 
 1. Confirming prerequisites and setting up the demo project.
-2. Installing the skill and MCP tools into GitHub Copilot CLI.
+2. Installing skills and MCP tools into GitHub Copilot CLI.
 3. Setting the required environment variables for the `[JTEST_HOME]/examples/demo` project.
-4. Sending your first prompt to the agent to fix violations.
-5. Validating the results with `git diff`.
-6. Enabling automatic commit mode.
+4. Sending your first prompt to fix violations with `jtest-static-analysis`.
+5. Running `jtest-unit-testing` to generate tests and improve coverage.
+6. Validating the results with `git diff`.
+7. Enabling automatic commit mode.
 
-Start there for a hands-on introduction before applying the skill to your own project.
+Start there for a hands-on introduction before applying the skills to your own project.
 
