@@ -136,7 +136,7 @@ Before reading any other environment variable, check for a config file:
    **If validation fails**: print `ERROR: [variable-name]=[value] points to a path that does not exist. Verify the path and retry.` **and terminate immediately!**
 5. Validate that `JTEST_UTA_SCRIPT_DIR` contains both `build-verify` and `jtest-analyze` directories, with approproriate script files inside. 
    **If validation fails**: print `ERROR: JTEST_UTA_SCRIPT_DIR=[JTEST_UTA_SCRIPT_DIR] is missing required script [script-name]. Provide both build-verify and jtest-analyze scripts and retry.` **and terminate immediately!**
-6.  If `resolve-config` runs successfully, **VALIDATE IF THE FOLLOWING ENVIRONMENT VARIABLES ARE GUARANTEED TO BE AVAILABLE TO ALL SUBSEQUENT STEPS AND REQUIRED ONES ARE NOT EMPTY:**
+6.  If `resolve-config` runs successfully, **THE FOLLOWING VARIABLES SHOULD BE GLOBALLY AVAILABLE DURING ENTIRE SKILL RUN TO ALL STEPS, SHELLS AND SUB-SHELLS, AND REQUIRED ONES SHOULD NOT BE EMPTY:**
    - `JTEST_HOME` -- required;
    - `ANALYZED_PROJECT_PATH` -- required;
    - `JTEST_UTA_CONFIGURATION` -- required;
