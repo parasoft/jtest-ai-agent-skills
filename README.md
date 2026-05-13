@@ -20,6 +20,7 @@
    - [Example 4: Custom Script Directory and Settings File](#example-4-custom-script-directory-and-settings-file)
    - [Example 5: Test Impact Analysis for Large Projects](#example-5-test-impact-analysis-for-large-projects)
    - [Example 6: Combined Workflow — Violations Then Coverage](#example-6-combined-workflow--violations-then-coverage)
+   - [Example 7: Fix Violations from an Existing Report (Skip Build and Analysis)](#example-7-fix-violations-from-an-existing-report-skip-build-and-analysis)
 6. [Best Practices for Reviewing AI-Applied Changes](#best-practices-for-reviewing-ai-applied-changes)
 7. [Security Considerations](#security-considerations)
    - [Use Coding Agents Responsibly](#use-coding-agents-responsibly)
@@ -544,6 +545,56 @@ Use jtest-static-analysis to fix severity 1 and severity 2 violations. Then use 
 ```
 
 ---
+
+### Example 7: Fix Violations from an Existing Report (Skip Build and Analysis)
+
+Use this pattern when you already have a Jtest `report.xml` from a previous CI run or a manual analysis and you want the agent to **only apply fixes** — without re-running the build, the test suite, or Jtest analysis. This is the fastest possible session: the agent reads violations straight from the provided report and applies targeted code changes.
+
+> **When to use this pattern:**
+> - You have a freshly produced CI report and do not want to pay for another full analysis.
+> - Your project's build cycle is long and you want to iterate on fixes interactively.
+> - You are triaging a specific set of violations identified offline.
+
+#### Step 1 — Point `JTEST_STATIC_BASE_REPORT` at the existing report
+
+Set the variable to the absolute path of the `report.xml` produced by a previous Jtest run. When this variable is set the skill skips its own analysis step and reads violations directly from the file.
+
+**Windows (PowerShell):**
+
+```powershell
+$env:JTEST_HOME               = "C:\Parasoft\jtest"
+$env:ANALYZED_PROJECT_PATH    = "C:\projects\myapp"
+$env:JTEST_STATIC_BASE_REPORT = "C:\projects\myapp\build\jtest\report.xml"
+$env:JTEST_COMMIT_FIXES       = "false"
+```
+
+**Linux/macOS:**
+
+```bash
+export JTEST_HOME="/opt/parasoft/jtest"
+export ANALYZED_PROJECT_PATH="/home/user/myapp"
+export JTEST_STATIC_BASE_REPORT="/home/user/myapp/build/jtest/report.xml"
+export JTEST_COMMIT_FIXES="false"
+```
+
+#### Step 2 — Craft a prompt that explicitly skips all other steps
+
+Because the skill normally runs a build, a test suite, and analysis by default, tell the agent explicitly to skip those phases:
+
+```
+Use jtest-static-analysis to fix 3 violations in the project.
+IMPORTANT: do not run any build or verification steps (skip these steps).
+IMPORTANT: do not run Jtest analysis (skip this step).
+Fix only the violations that are present in the base report provided via JTEST_STATIC_BASE_REPORT.
+```
+
+The agent will:
+1. Read the violations from the file referenced by `JTEST_STATIC_BASE_REPORT`.
+2. Rank them by severity and select the first 3.
+3. Apply a targeted source-code fix for each violation — **without building or re-analysing the project**.
+
+> **Note:** Because build verification is skipped, the agent cannot confirm that its fix compiles or that tests still pass. Use this mode for rapid exploration or when you plan to batch-review and build manually afterwards. For production workflows, omit the "skip build" instruction and let the skill validate each fix automatically.
+
 
 ## Best Practices for Reviewing AI-Applied Changes
 
