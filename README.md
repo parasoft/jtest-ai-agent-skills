@@ -376,18 +376,6 @@ The agent will:
 
 > **Note:** Because build verification is skipped, the agent cannot confirm that its fix compiles or that tests still pass. Use this mode for rapid exploration or when you plan to batch-review and build manually afterwards. For production workflows, omit the "skip build" instruction and let the skill validate each fix automatically.
 
-#### Optional — Filter to specific rules
-
-To restrict fixes to a particular rule or set of rules, combine `JTEST_STATIC_FILTER_RULE` with the base report:
-
-```powershell
-$env:JTEST_STATIC_FILTER_RULE = "BD.RES.LEAKS,OWASP2021.A05.SQLI"
-```
-
-The agent will then only process violations in the base report that match those rule IDs, ignoring all others.
-
----
-
 ### Example 4: Scoped Analysis — Single Package or File
 
 Restrict analysis to a specific package or file to keep the session focused and minimise build times.
