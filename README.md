@@ -16,11 +16,11 @@
 5. [Usage Examples](#usage-examples)
    - [Example 1: Basic Full-Project Analysis](#example-1-basic-full-project-analysis)
    - [Example 2: Increase Test Coverage with Unit Test Generation](#example-2-increase-test-coverage-with-unit-test-generation)
-   - [Example 3: Scoped Analysis — Single Package or File](#example-3-scoped-analysis--single-package-or-file)
-   - [Example 4: Custom Script Directory and Settings File](#example-4-custom-script-directory-and-settings-file)
-   - [Example 5: Test Impact Analysis for Large Projects](#example-5-test-impact-analysis-for-large-projects)
-   - [Example 6: Combined Workflow — Violations Then Coverage](#example-6-combined-workflow--violations-then-coverage)
-   - [Example 7: Fix Violations from an Existing Report (Skip Build and Analysis)](#example-7-fix-violations-from-an-existing-report-skip-build-and-analysis)
+   - [Example 3: Fix Violations from an Existing Report (Skip Build and Analysis)](#example-3-fix-violations-from-an-existing-report-skip-build-and-analysis)
+   - [Example 4: Scoped Analysis — Single Package or File](#example-4-scoped-analysis--single-package-or-file)
+   - [Example 5: Custom Script Directory and Settings File](#example-5-custom-script-directory-and-settings-file)
+   - [Example 6: Test Impact Analysis for Large Projects](#example-6-test-impact-analysis-for-large-projects)
+   - [Example 7: Combined Workflow — Violations Then Coverage](#example-7-combined-workflow--violations-then-coverage)
 6. [Best Practices for Reviewing AI-Applied Changes](#best-practices-for-reviewing-ai-applied-changes)
 7. [Security Considerations](#security-considerations)
    - [Use Coding Agents Responsibly](#use-coding-agents-responsibly)
@@ -222,7 +222,7 @@ Alternatively, values can be placed in an optional config file and loaded via `J
 | `JTEST_COMMIT_FIXES` | `false` | Set to `true` to automatically commit each successful fix as a separate Git commit. |
 | `JTEST_STATIC_FILTER_RULE` | *(all rules)* | Comma-separated rule IDs to process. When set, only violations matching these IDs are fixed. Example: `BD.RES.LEAKS,OWASP2021.A05.SQLI`. |
 | `JTEST_SETTINGS` | *(none)* | Absolute path to a Jtest settings `.properties` file. Adds `-Djtest.settings=<path>` to all analysis commands. |
-| `JTEST_STATIC_BASE_REPORT` | *(none)* | Absolute path to an existing `report.xml`. When set, Jtest analysis (Step 3) is skipped and this file is used as the baseline. Useful for incremental/differential workflows. See [Example 4](#example-4-test-impact-analysis-for-large-projects) for a TIA setup. |
+| `JTEST_STATIC_BASE_REPORT` | *(none)* | Absolute path to an existing `report.xml`. When set, Jtest analysis (Step 3) is skipped and this file is used as the baseline. Useful for incremental/differential workflows. See [Example 6](#example-6-test-impact-analysis-for-large-projects) for a TIA setup. |
 | `JTEST_STATIC_BASE_COVERAGE` | *(none)* | Absolute path to an existing `coverage.xml`. Used together with `JTEST_STATIC_BASE_REPORT` to enable TIA (test-impact analysis) in the build-verify step — only tests affected by the changed code are re-run, significantly reducing build times for large projects. |
 | `JTEST_STATIC_NO_OF_MAX_FIXES` | `10` | Maximum number of successful fixes in one session. Overridden by an explicit number in the agent prompt (e.g. "fix 5 violations"). |
 | `JTEST_STATIC_SCRIPT_DIR` | `<skill_dir>/scripts` | Absolute path to the directory containing `build-verify` and `jtest-analyze` scripts. Override for projects that need a custom build or non-standard Maven/Gradle setup. |
@@ -327,7 +327,68 @@ Use jtest-unit-testing to increase test coverage for the project.
 
 ---
 
-### Example 3: Scoped Analysis — Single Package or File
+### Example 3: Fix Violations from an Existing Report (Skip Build and Analysis)
+
+Use this pattern when you already have a Jtest `report.xml` from a previous CI run or a manual analysis and you want the agent to **only apply fixes** — without re-running the build, the test suite, or Jtest analysis. This is the fastest possible session: the agent reads violations straight from the provided report and applies targeted code changes.
+
+> **When to use this pattern:**
+> - You have a freshly produced CI report and do not want to pay for another full analysis.
+> - Your project's build cycle is long and you want to iterate on fixes interactively.
+> - You are triaging a specific set of violations identified offline.
+
+#### Step 1 — Point `JTEST_STATIC_BASE_REPORT` at the existing report
+
+Set the variable to the absolute path of the `report.xml` produced by a previous Jtest run. When this variable is set the skill skips its own analysis step and reads violations directly from the file.
+
+**Windows (PowerShell):**
+
+```powershell
+$env:JTEST_HOME               = "C:\Parasoft\jtest"
+$env:ANALYZED_PROJECT_PATH    = "C:\projects\myapp"
+$env:JTEST_STATIC_BASE_REPORT = "C:\projects\myapp\build\jtest\report.xml"
+$env:JTEST_COMMIT_FIXES       = "false"
+```
+
+**Linux/macOS:**
+
+```bash
+export JTEST_HOME="/opt/parasoft/jtest"
+export ANALYZED_PROJECT_PATH="/home/user/myapp"
+export JTEST_STATIC_BASE_REPORT="/home/user/myapp/build/jtest/report.xml"
+export JTEST_COMMIT_FIXES="false"
+```
+
+#### Step 2 — Craft a prompt that explicitly skips all other steps
+
+Because the skill normally runs a build, a test suite, and analysis by default, tell the agent explicitly to skip those phases:
+
+```
+Use jtest-static-analysis to fix 3 violations in the project.
+IMPORTANT: do not run any build or verification steps (skip these steps).
+IMPORTANT: do not run Jtest analysis (skip this step).
+Fix only the violations that are present in the base report provided via JTEST_STATIC_BASE_REPORT.
+```
+
+The agent will:
+1. Read the violations from the file referenced by `JTEST_STATIC_BASE_REPORT`.
+2. Rank them by severity and select the first 3.
+3. Apply a targeted source-code fix for each violation — **without building or re-analysing the project**.
+
+> **Note:** Because build verification is skipped, the agent cannot confirm that its fix compiles or that tests still pass. Use this mode for rapid exploration or when you plan to batch-review and build manually afterwards. For production workflows, omit the "skip build" instruction and let the skill validate each fix automatically.
+
+#### Optional — Filter to specific rules
+
+To restrict fixes to a particular rule or set of rules, combine `JTEST_STATIC_FILTER_RULE` with the base report:
+
+```powershell
+$env:JTEST_STATIC_FILTER_RULE = "BD.RES.LEAKS,OWASP2021.A05.SQLI"
+```
+
+The agent will then only process violations in the base report that match those rule IDs, ignoring all others.
+
+---
+
+### Example 4: Scoped Analysis — Single Package or File
 
 Restrict analysis to a specific package or file to keep the session focused and minimise build times.
 
@@ -368,7 +429,7 @@ The skill automatically translates natural-language scope expressions into `-Djt
 
 ---
 
-### Example 4: Custom Script Directory and Settings File
+### Example 5: Custom Script Directory and Settings File
 
 For projects with non-standard builds (e.g. multi-module Maven with profiles, or Gradle with custom tasks), supply project-specific `build-verify` and `jtest-analyze` scripts. In this example all settings are kept in a project-local config file so only a single environment variable needs to be set in the shell.
 
@@ -429,7 +490,7 @@ rule violations only. Commit each fix.
 
 ---
 
-### Example 5: Test Impact Analysis for Large Projects
+### Example 6: Test Impact Analysis for Large Projects
 
 For large projects, running the full test suite before and after every fix can be prohibitively slow. Jtest supports **Test Impact Analysis (TIA)**, which uses a baseline coverage snapshot to determine which tests are actually affected by a code change and runs only those tests. This can reduce build-verify time dramatically.
 
@@ -508,7 +569,7 @@ After a batch of fixes is reviewed and merged, regenerate the baseline by repeat
 
 ---
 
-### Example 6: Combined Workflow — Violations Then Coverage
+### Example 7: Combined Workflow — Violations Then Coverage
 
 Run both skills in sequence: first fix highest-priority static analysis violations, then generate unit tests to raise coverage around changed code.
 
@@ -545,55 +606,6 @@ Use jtest-static-analysis to fix severity 1 and severity 2 violations. Then use 
 ```
 
 ---
-
-### Example 7: Fix Violations from an Existing Report (Skip Build and Analysis)
-
-Use this pattern when you already have a Jtest `report.xml` from a previous CI run or a manual analysis and you want the agent to **only apply fixes** — without re-running the build, the test suite, or Jtest analysis. This is the fastest possible session: the agent reads violations straight from the provided report and applies targeted code changes.
-
-> **When to use this pattern:**
-> - You have a freshly produced CI report and do not want to pay for another full analysis.
-> - Your project's build cycle is long and you want to iterate on fixes interactively.
-> - You are triaging a specific set of violations identified offline.
-
-#### Step 1 — Point `JTEST_STATIC_BASE_REPORT` at the existing report
-
-Set the variable to the absolute path of the `report.xml` produced by a previous Jtest run. When this variable is set the skill skips its own analysis step and reads violations directly from the file.
-
-**Windows (PowerShell):**
-
-```powershell
-$env:JTEST_HOME               = "C:\Parasoft\jtest"
-$env:ANALYZED_PROJECT_PATH    = "C:\projects\myapp"
-$env:JTEST_STATIC_BASE_REPORT = "C:\projects\myapp\build\jtest\report.xml"
-$env:JTEST_COMMIT_FIXES       = "false"
-```
-
-**Linux/macOS:**
-
-```bash
-export JTEST_HOME="/opt/parasoft/jtest"
-export ANALYZED_PROJECT_PATH="/home/user/myapp"
-export JTEST_STATIC_BASE_REPORT="/home/user/myapp/build/jtest/report.xml"
-export JTEST_COMMIT_FIXES="false"
-```
-
-#### Step 2 — Craft a prompt that explicitly skips all other steps
-
-Because the skill normally runs a build, a test suite, and analysis by default, tell the agent explicitly to skip those phases:
-
-```
-Use jtest-static-analysis to fix 3 violations in the project.
-IMPORTANT: do not run any build or verification steps (skip these steps).
-IMPORTANT: do not run Jtest analysis (skip this step).
-Fix only the violations that are present in the base report provided via JTEST_STATIC_BASE_REPORT.
-```
-
-The agent will:
-1. Read the violations from the file referenced by `JTEST_STATIC_BASE_REPORT`.
-2. Rank them by severity and select the first 3.
-3. Apply a targeted source-code fix for each violation — **without building or re-analysing the project**.
-
-> **Note:** Because build verification is skipped, the agent cannot confirm that its fix compiles or that tests still pass. Use this mode for rapid exploration or when you plan to batch-review and build manually afterwards. For production workflows, omit the "skip build" instruction and let the skill validate each fix automatically.
 
 
 ## Best Practices for Reviewing AI-Applied Changes
