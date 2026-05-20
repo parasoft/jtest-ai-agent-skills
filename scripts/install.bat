@@ -159,42 +159,19 @@ REM :install_copilot_cli
 
 :install_copilot_cli
 echo ^>^>^> Installing Parasoft Jtest integration for GitHub Copilot CLI ...
-SET "cfg_file=%USERPROFILE%\.copilot\mcp-config.json"
 SET "mcp_cmd=%JTEST_HOME%\integration\mcp\jtestmcp.bat"
-SET "mcp_j=%mcp_cmd:\=\\%"
-IF DEFINED PYTHON_EXE (
-    CALL :run_merge_python json-local "%cfg_file%" "%MCP_SERVER_NAME%" "%mcp_cmd%"
-    IF ERRORLEVEL 1 EXIT /B 1
-) ELSE (
-    IF EXIST "%cfg_file%" (
-        echo   Python not found. Add the following entry to %cfg_file%
-        echo   under the "mcpServers" key:
-        echo.
-        echo     "%MCP_SERVER_NAME%": {
-        echo       "type": "local",
-        echo       "command": "%mcp_j%",
-        echo       "tools": ["*"],
-        echo       "args": []
-        echo     }
-        echo.
-    ) ELSE (
-        IF NOT EXIST "%USERPROFILE%\.copilot\" MKDIR "%USERPROFILE%\.copilot"
-        (
-            echo {
-            echo   "mcpServers": {
-            echo     "%MCP_SERVER_NAME%": {
-            echo       "type": "local",
-            echo       "command": "%mcp_j%",
-            echo       "tools": [
-            echo         "*"
-            echo       ],
-            echo       "args": []
-            echo     }
-            echo   }
-            echo }
-        ) > "%cfg_file%"
-        echo   Written MCP configuration to %cfg_file%
+WHERE copilot >nul 2>&1
+IF %ERRORLEVEL% EQU 0 (
+    copilot mcp add --transport stdio "%MCP_SERVER_NAME%" "%mcp_cmd%"
+    IF ERRORLEVEL 1 (
+        echo   Error: Failed to register MCP server via Copilot CLI. 1>&2
+        EXIT /B 1
     )
+    echo   Registered MCP server '%MCP_SERVER_NAME%' via Copilot CLI.
+) ELSE (
+    echo   Warning: 'copilot' CLI not found -- cannot register MCP server automatically. 1>&2
+    echo   Run the following command manually after installing the Copilot CLI: 1>&2
+    echo     copilot mcp add --transport stdio %MCP_SERVER_NAME% "%mcp_cmd%" 1>&2
 )
 CALL :copy_skills "%USERPROFILE%\.copilot\skills"
 CALL :copy_agent "jtest-fix-violation.md" "%USERPROFILE%\.copilot\agents"

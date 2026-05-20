@@ -103,50 +103,13 @@ copy_skills() {
 install_copilot_cli() {
     echo ">>> Installing Parasoft Jtest integration for GitHub Copilot CLI ..."
 
-    local config_file="$HOME/.copilot/mcp-config.json"
-    mkdir -p "$HOME/.copilot"
-
-    if [ -f "$config_file" ] && command -v jq &>/dev/null; then
-        local tmp
-        tmp="$(mktemp)"
-        jq --arg cmd "$JTEST_HOME/integration/mcp/jtestmcp" \
-           --arg name "$MCP_SERVER_NAME" \
-           '.mcpServers[$name] = {"type":"local","command":$cmd,"tools":["*"],"args":[]}' \
-           "$config_file" > "$tmp" && mv "$tmp" "$config_file"
-        echo "  Updated MCP configuration in $config_file"
-    elif [ -f "$config_file" ]; then
-        echo "  Warning: jq not found — cannot automatically update $config_file" >&2
-        echo "  Please merge the following configuration into $config_file manually:" >&2
-        cat << EOF
-{
-  "mcpServers": {
-    "$MCP_SERVER_NAME": {
-      "type": "local",
-      "command": "$JTEST_HOME/integration/mcp/jtestmcp",
-      "tools": [
-        "*"
-      ],
-      "args": []
-    }
-  }
-}
-EOF
+    if command -v copilot &>/dev/null; then
+        copilot mcp add --transport stdio "$MCP_SERVER_NAME" "$JTEST_HOME/integration/mcp/jtestmcp"
+        echo "  Registered MCP server '$MCP_SERVER_NAME' via Copilot CLI."
     else
-        cat > "$config_file" << EOF
-{
-  "mcpServers": {
-    "$MCP_SERVER_NAME": {
-      "type": "local",
-      "command": "$JTEST_HOME/integration/mcp/jtestmcp",
-      "tools": [
-        "*"
-      ],
-      "args": []
-    }
-  }
-}
-EOF
-        echo "  Written MCP configuration to $config_file"
+        echo "  Warning: 'copilot' CLI not found — cannot register MCP server automatically." >&2
+        echo "  Run the following command manually after installing the Copilot CLI:" >&2
+        echo "    copilot mcp add --transport stdio $MCP_SERVER_NAME \"$JTEST_HOME/integration/mcp/jtestmcp\"" >&2
     fi
 
     copy_skills "$HOME/.copilot/skills"
