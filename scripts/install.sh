@@ -102,10 +102,21 @@ copy_skills() {
 
 install_copilot_cli() {
     echo ">>> Installing Parasoft Jtest integration for GitHub Copilot CLI ..."
+    local _rc=0
 
     if command -v copilot &>/dev/null; then
-        copilot mcp add --transport stdio "$MCP_SERVER_NAME" "$JTEST_HOME/integration/mcp/jtestmcp"
-        echo "  Registered MCP server '$MCP_SERVER_NAME' via Copilot CLI."
+        if copilot mcp get "$MCP_SERVER_NAME" >/dev/null 2>&1; then
+            echo "  Warning: MCP server '$MCP_SERVER_NAME' is already registered." >&2
+            echo "  It is advisable to remove it first with:" >&2
+            echo "    copilot mcp remove $MCP_SERVER_NAME" >&2
+        else
+            if copilot mcp add --transport stdio "$MCP_SERVER_NAME" "$JTEST_HOME/integration/mcp/jtestmcp"; then
+                echo "  Registered MCP server '$MCP_SERVER_NAME' via Copilot CLI."
+            else
+                echo "  Error: Failed to register MCP server via Copilot CLI." >&2
+                _rc=1
+            fi
+        fi
     else
         echo "  Warning: 'copilot' CLI not found — cannot register MCP server automatically." >&2
         echo "  Run the following command manually after installing the Copilot CLI:" >&2
@@ -114,46 +125,31 @@ install_copilot_cli() {
 
     copy_skills "$HOME/.copilot/skills"
     copy_agent "jtest-fix-violation.md" "$HOME/.copilot/agents"
-    echo ">>> GitHub Copilot CLI integration installed."
+    echo ">>> GitHub Copilot CLI integration installed."    return $_rc
 }
 
 
 install_codex_cli() {
     echo ">>> Installing Parasoft Jtest integration for Codex CLI ..."
+    local _rc=0
 
-    local config_file="$HOME/.codex/config.toml"
-    local section="[mcp_servers.$MCP_SERVER_NAME]"
-    local command_entry="command = \"$JTEST_HOME/integration/mcp/jtestmcp\""
-
-    mkdir -p "$HOME/.codex"
-
-    if [ -f "$config_file" ]; then
-        if grep -qF "$section" "$config_file"; then
-            # Update the existing command entry for this MCP server
-            local tmp
-            tmp="$(mktemp)"
-            awk -v section="$section" -v cmd="$command_entry" '
-                $0 == section { print; found=1; next }
-                found && /^command[[:space:]]*=/ { print cmd; found=0; next }
-                found && /^\[/ { found=0 }
-                { print }
-            ' "$config_file" > "$tmp" && mv "$tmp" "$config_file"
-            echo "  Updated MCP configuration in $config_file"
+    if command -v codex &>/dev/null; then
+        if codex mcp add "$MCP_SERVER_NAME" -- "$JTEST_HOME/integration/mcp/jtestmcp"; then
+            echo "  Registered MCP server '$MCP_SERVER_NAME' via Codex CLI."
         else
-            printf '\n%s\n%s\n' "$section" "$command_entry" >> "$config_file"
-            echo "  Appended MCP configuration to $config_file"
+            echo "  Error: Failed to register MCP server via Codex CLI." >&2
+            _rc=1
         fi
     else
-        cat > "$config_file" << EOF
-$section
-$command_entry
-EOF
-        echo "  Written MCP configuration to $config_file"
+        echo "  Warning: 'codex' CLI not found — cannot register MCP server automatically." >&2
+        echo "  Run the following command manually after installing the Codex CLI:" >&2
+        echo "    codex mcp add $MCP_SERVER_NAME -- \"$JTEST_HOME/integration/mcp/jtestmcp\"" >&2
     fi
 
     copy_skills "$HOME/.codex/skills"
     copy_agent "jtest-fix-violation.toml" "$HOME/.codex/agents"
     echo ">>> Codex CLI integration installed."
+    return $_rc
 }
 
 
