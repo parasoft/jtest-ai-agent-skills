@@ -96,10 +96,10 @@ set BUILD_CMD=
 set BUILD_TYPE=
 
 if exist "gradlew.bat" (
-    set BUILD_CMD=gradlew.bat
+    set BUILD_CMD=.\gradlew.bat
     set BUILD_TYPE=gradle
 ) else if exist "mvnw.cmd" (
-    set BUILD_CMD=mvnw.cmd
+    set BUILD_CMD=.\mvnw.cmd
     set BUILD_TYPE=maven
 ) else (
     where gradle >nul 2>&1

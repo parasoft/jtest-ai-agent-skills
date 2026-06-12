@@ -39,10 +39,10 @@ set "TEST_CMD=test"
 set TEST_CMD_ARG=%~1
 
 if exist "mvnw.cmd" (
-    set BUILD_CMD=mvnw.cmd
+    set BUILD_CMD=.\mvnw.cmd
     set BUILD_TYPE=maven
 ) else if exist "gradlew.bat" (
-    set BUILD_CMD=gradlew.bat
+    set BUILD_CMD=.\gradlew.bat
     set BUILD_TYPE=gradle
 ) else (
     where mvn >nul 2>&1 && if exist "%ANALYZED_PROJECT_PATH%\pom.xml" (

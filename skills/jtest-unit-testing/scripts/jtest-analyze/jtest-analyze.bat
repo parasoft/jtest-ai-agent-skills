@@ -74,10 +74,10 @@ rem ---------------------------------------------------------------------------
 rem Detect build wrapper / fall back to system tool
 rem ---------------------------------------------------------------------------
 if exist "mvnw.cmd" (
-    set BUILD_CMD=mvnw.cmd
+    set BUILD_CMD=.\mvnw.cmd
     set BUILD_TYPE=maven
 ) else if exist "gradlew.bat" (
-    set BUILD_CMD=gradlew.bat
+    set BUILD_CMD=.\gradlew.bat
     set BUILD_TYPE=gradle
 ) else (
     if exist "pom.xml" (
