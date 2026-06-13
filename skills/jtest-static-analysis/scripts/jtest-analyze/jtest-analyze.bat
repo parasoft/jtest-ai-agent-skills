@@ -90,6 +90,17 @@ if defined JTEST_REFERENCE_BRANCH (
 )
 
 rem ---------------------------------------------------------------------------
+rem Build the OSGi cache ID argument (set by each subagent to avoid conflicts
+rem when multiple agents run jtestcli concurrently)
+rem ---------------------------------------------------------------------------
+set CACHE_ID_ARG=
+if defined JTEST_CACHE_ID (
+    if not "%JTEST_CACHE_ID%"=="" (
+        set CACHE_ID_ARG=-Djtest.jvmArgs=-Djt.cache.id="%JTEST_CACHE_ID%"
+    )
+)
+
+rem ---------------------------------------------------------------------------
 rem Detect build wrapper / fall back to system tool
 rem ---------------------------------------------------------------------------
 set BUILD_CMD=
@@ -137,7 +148,8 @@ if "%BUILD_TYPE%"=="maven" (
         %REF_REPORT_ARG% ^
         %REF_EXCLUDE_ARG% ^
         %RESOURCE_ARGS% ^
-        %BRANCH_ARGS%
+        %BRANCH_ARGS% ^
+        %CACHE_ID_ARG%
 ) else (
     call %BUILD_CMD% jtest ^
         "-I%JTEST_HOME%\integration\gradle\init.gradle" ^
@@ -146,7 +158,8 @@ if "%BUILD_TYPE%"=="maven" (
         %REF_REPORT_ARG% ^
         %REF_EXCLUDE_ARG% ^
         %RESOURCE_ARGS% ^
-        %BRANCH_ARGS%
+        %BRANCH_ARGS% ^
+        %CACHE_ID_ARG%
 )
 
 set EXIT_CODE=%ERRORLEVEL%

@@ -5,6 +5,20 @@ description: >
   (or a batch of simple violations in one file). Invoked by the
   jtest-static-analysis skill to run each fix-verify-commit cycle in its
   own isolated context, reducing token usage in the parent conversation.
+tools:
+  - view
+  - edit
+  - glob
+  - grep
+  - bash
+  - read_bash
+  - stop_bash
+  - powershell
+  - read_powershell
+  - stop_powershell
+  - report_intent
+  - jtestmcp/get_rule_documentation
+  - jtestmcp/get_violations_from_report_file
 ---
 
 # Jtest Fix Violation Agent
@@ -82,9 +96,18 @@ All workflow scripts are called through the `run-script` dispatch helper. Detect
 | Windows (PowerShell) | `& "$env:JTEST_STATIC_SCRIPT_DIR\internal\run-script.ps1" -ScriptName <name>` |
 | Linux/macOS | `bash "$JTEST_STATIC_SCRIPT_DIR/internal/run-script.sh" <name>` |
 
-The following environment variables must be set in the terminal session before running any script: `JTEST_HOME`, `ANALYZED_PROJECT_PATH`, `JTEST_STATIC_CONFIGURATION`, `JTEST_SETTINGS`, `JTEST_STATIC_BASE_REPORT`, `JTEST_STATIC_BASE_COVERAGE`, `JTEST_STATIC_SCRIPT_DIR`. These are inherited from the parent process environment.
+The following environment variables must be set in the terminal session before running any script: `JTEST_HOME`, `ANALYZED_PROJECT_PATH`, `JTEST_STATIC_CONFIGURATION`, `JTEST_SETTINGS`, `JTEST_STATIC_BASE_REPORT`, `JTEST_STATIC_BASE_COVERAGE`, `JTEST_STATIC_SCRIPT_DIR`, `JTEST_CACHE_ID`. These are inherited from the parent process environment.
 
 ## Workflow
+
+### Step 0: Generate Unique Cache ID
+
+Generate a unique OSGi cache ID for this agent instance **before** running any analysis script. This prevents cache conflicts when multiple agents run concurrently.
+
+- **Windows (PowerShell)**: `$env:JTEST_CACHE_ID = [System.Guid]::NewGuid().ToString()`
+- **Linux/macOS**: `export JTEST_CACHE_ID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen)`
+
+Ensure `JTEST_CACHE_ID` remains set in the environment for all subsequent script invocations in this session.
 
 ### Step 1: Parse Input
 

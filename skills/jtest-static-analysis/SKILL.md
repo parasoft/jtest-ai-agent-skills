@@ -247,7 +247,14 @@ Parse the `FIX_RESULT=` JSON line from the agent's output. Update counters:
 
 #### Processing Order
 
-Process violations in the sorted order from Step 5, one agent invocation at a time. **Do not invoke multiple `jtest-fix-violation` agents in parallel** — each must complete before the next begins (to avoid git conflicts and ensure line-number stability).
+**Group violations by source file before dispatching agents.** All violations (or batches) that belong to the same source file **must** be handled by a single agent invocation — never split violations from the same file across multiple agents, as concurrent edits to the same file cause merge conflicts.
+
+After grouping:
+- Each group targets a **distinct** source file.
+- Multiple groups (targeting different files) **may be dispatched in parallel** — each agent generates its own unique OSGi cache ID to prevent jtestcli cache conflicts when running concurrently.
+- Groups that share the same file are merged into one agent invocation before dispatch.
+
+Collect all `FIX_RESULT=` lines once the parallel batch completes, then apply the counter updates from Step 6 in violation-sorted order.
 
 ### Step 7: Summary
 

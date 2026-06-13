@@ -43,6 +43,12 @@ Before script execution, ensure env vars are set in session:
 - JTEST_STATIC_SCRIPT_DIR
 
 Workflow:
+0. Generate Unique Cache ID
+Generate a unique OSGi cache ID for this agent instance **before** running any analysis script. This prevents cache conflicts when multiple agents run concurrently.
+- **Windows (PowerShell)**: `$env:JTEST_CACHE_ID = [System.Guid]::NewGuid().ToString()`
+- **Linux/macOS**: `export JTEST_CACHE_ID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen)`
+Ensure `JTEST_CACHE_ID` remains set in the environment for all subsequent script invocations in this session.
+
 1. Parse JSON input and extract all required fields.
 2. For each unique ruleId, call get_rule_documentation once and cache it.
 3. Read target source file(s).

@@ -79,6 +79,15 @@ if ($env:JTEST_REFERENCE_BRANCH -and $env:JTEST_REFERENCE_BRANCH -ne "") {
 }
 
 # ---------------------------------------------------------------------------
+# Build the OSGi cache ID argument (set by each subagent to avoid conflicts
+# when multiple agents run jtestcli concurrently)
+# ---------------------------------------------------------------------------
+$cacheIdArg = @()
+if ($env:JTEST_CACHE_ID -and $env:JTEST_CACHE_ID -ne "") {
+    $cacheIdArg = @("-Djtest.jvmArgs=-Djt.cache.id=`"$($env:JTEST_CACHE_ID)`"")
+}
+
+# ---------------------------------------------------------------------------
 # Detect build wrapper / fall back to system tool
 # ---------------------------------------------------------------------------
 $buildCmd  = $null
@@ -117,7 +126,8 @@ if ($buildType -eq "maven") {
         @settingsArg `
         @refReportArg `
         @resourceArgs `
-        @branchArgs
+        @branchArgs `
+        @cacheIdArg
 } else {
     $initScript = Join-Path $env:JTEST_HOME "integration\gradle\init.gradle"
     & $buildCmd jtest `
@@ -126,7 +136,8 @@ if ($buildType -eq "maven") {
         @settingsArg `
         @refReportArg `
         @resourceArgs `
-        @branchArgs
+        @branchArgs `
+        @cacheIdArg
 }
 
 $exitCode = $LASTEXITCODE

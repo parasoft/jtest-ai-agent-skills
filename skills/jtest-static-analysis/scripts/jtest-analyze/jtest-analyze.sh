@@ -82,6 +82,15 @@ if [ -n "${JTEST_REFERENCE_BRANCH:-}" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Build the OSGi cache ID argument (set by each subagent to avoid conflicts
+# when multiple agents run jtestcli concurrently)
+# ---------------------------------------------------------------------------
+CACHE_ID_ARG=""
+if [ -n "${JTEST_CACHE_ID:-}" ]; then
+    CACHE_ID_ARG="-Djtest.jvmArgs=-Djt.cache.id=${JTEST_CACHE_ID}"
+fi
+
+# ---------------------------------------------------------------------------
 # Detect build wrapper / fall back to system tool
 # ---------------------------------------------------------------------------
 BUILD_CMD=""
@@ -117,7 +126,8 @@ if [ "${BUILD_TYPE}" = "maven" ]; then
         ${REF_REPORT_ARG} \
         ${REF_EXCLUDE_ARG} \
         ${RESOURCE_ARGS} \
-        ${BRANCH_ARGS}
+        ${BRANCH_ARGS} \
+        ${CACHE_ID_ARG}
 else
     # shellcheck disable=SC2086
     ${BUILD_CMD} jtest \
@@ -127,7 +137,8 @@ else
         ${REF_REPORT_ARG} \
         ${REF_EXCLUDE_ARG} \
         ${RESOURCE_ARGS} \
-        ${BRANCH_ARGS}
+        ${BRANCH_ARGS} \
+        ${CACHE_ID_ARG}
 fi
 
 EXIT_CODE=$?
