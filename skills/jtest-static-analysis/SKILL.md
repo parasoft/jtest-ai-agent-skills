@@ -22,7 +22,7 @@ metadata:
 
 This skill enables Parasoft Jtest Static Analysis on Java projects, identify violations, and help fix them automatically.
 
-> **Non-interactive / nightly mode**: This skill operates fully autonomously. It **never** prompts the user for input. All required settings must be supplied via environment variables before the skill is invoked. If a required setting cannot be determined automatically, the skill prints a descriptive error message to the console and terminates immediately with a non-zero exit code.
+> **Non-interactive / nightly mode — Fail-Fast**: This skill operates fully autonomously and uses a **fail-fast strategy**. It **never** prompts the user for input. All required settings must be supplied via environment variables before the skill is invoked. **The very first missing, invalid, or unresolvable required setting causes the skill to print a descriptive `ERROR:` message to stderr and terminate immediately with exit code 1 — before any build, analysis, or fix step is attempted.** No fallbacks, guesses, or partial execution are permitted.
 
 ## When to Use This Skill
 
@@ -54,6 +54,8 @@ All Maven and Gradle commands are executed exclusively through the `build-verify
 | `JTEST_STATIC_SCRIPT_DIR`      | Optional | Absolute path to the scripts root directory. **Defaults to the `scripts/` subdirectory of the skill directory** (the directory containing this `SKILL.md`). The `build-verify` scripts are expected in `[JTEST_STATIC_SCRIPT_DIR]/build-verify/` and the `jtest-analyze` scripts in `[JTEST_STATIC_SCRIPT_DIR]/jtest-analyze/`. Override to supply project-specific scripts. See [Script Execution Mode](#script-execution-mode) for the required script names and interface. |
 | `JTEST_REFERENCE_BRANCH`       | Optional | If set, the skill will compare the current branch with the specified reference branch to determine the analysis scope. The reference branch must exist in the repository.                                                                                                                                                                                                                                                                                                     |
 ## Critical Constraints
+
+**FAIL FAST on any missing or invalid configuration.** Validate ALL required environment variables and paths at the very start (Step 1), before running any script or performing any analysis. The moment any required setting is absent, unresolvable, or points to a non-existent path (e.g. `JTEST_HOME` not set and `jtestcli` not on `PATH`; `ANALYZED_PROJECT_PATH` not set or directory does not exist), print a descriptive `ERROR:` message to stderr and **stop immediately** with exit code 1. Do **not** attempt to guess values, continue with partial configuration, fall back to defaults for required variables, or defer the error to a later step.
 
 **Always EXECUTE scripts by running them in a terminal shell. NEVER read, open, or inspect a script file as a substitute for executing it.** When a step says `Run: run-script <name>` (or its OS-specific equivalent), that means invoke the command in a terminal and wait for its exit code and stdout output. Reading the script file with a file-read tool is forbidden and does not satisfy the step requirement.
 
@@ -111,7 +113,7 @@ The script performs the following (in order):
 5. Verifies that `jtestcli` / `jtestcli.exe` exists in `JTEST_HOME`.
 6. Prints the full resolved configuration summary to stdout.
 
-**If any validation fails the script prints an `ERROR:` message to stderr and exits with code 1. Terminate the skill immediately on a non-zero exit code.**
+**If any validation fails the script prints an `ERROR:` message to stderr and exits with code 1. ⛔ Terminate the skill immediately — do not proceed to Step 2 (build), Step 3 (analysis), or any subsequent step. The fail-fast rule is absolute: a missing `JTEST_HOME`, an invalid `ANALYZED_PROJECT_PATH`, or any other configuration error detected here must halt all further execution.**
 
 After successful return, the following environment variables are guaranteed to be set and available to all subsequent steps: `JTEST_HOME`, `ANALYZED_PROJECT_PATH`, `JTEST_STATIC_CONFIGURATION`, `JTEST_COMMIT_FIXES`, `JTEST_STATIC_FILTER_RULE`, `JTEST_SETTINGS`, `JTEST_STATIC_BASE_REPORT`, `JTEST_STATIC_BASE_COVERAGE`, `JTEST_STATIC_NO_OF_MAX_FIXES`, `JTEST_STATIC_SCRIPT_DIR`, `JTEST_RESOURCE`.
 
