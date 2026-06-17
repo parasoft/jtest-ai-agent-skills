@@ -1,4 +1,4 @@
----
+﻿---
 name: jtest-static-analysis
 description: Run Parasoft Jtest Static Analysis on Java projects, detect violations in user code, and provide fix recommendations. Use this skill when users want to analyze Java code quality, find bugs, security issues, or coding standard violations using Jtest.
 labels:
@@ -70,6 +70,8 @@ All Maven and Gradle commands are executed exclusively through the `build-verify
 **MCP tool calls MUST be executed one at a time, strictly sequentially and synchronously.** Never invoke two or more MCP tools in parallel or in an overlapping manner. Each MCP tool call must fully complete and its result must be received before the next MCP tool call is initiated. This applies to all MCP tools used in this skill (e.g., `get_violations_from_report_file`, `get_rule_documentation`).
 
 **Step 3 (Jtest Analysis) is skipped when `JTEST_STATIC_BASE_REPORT` is set** — that file is used directly as `baseline_report_path` and as the initial source of violations (Step 4). **If `JTEST_STATIC_BASE_REPORT` is not set, the skill MUST always run the full Jtest analysis first (Step 3) to produce the report before attempting to identify or fix any violations.** Never skip straight to fixing violations without a freshly generated or explicitly provided report.
+
+**When `JTEST_STATIC_BASE_REPORT` is NOT set, the agent MUST NOT search for, locate, or reuse any pre-existing `report.xml` file anywhere in the filesystem (including inside the project directory, build output directories, or any other location).** The only valid source of violations in this case is the fresh `report.xml` produced by running the `jtest-analyze` script in Step 3. Using a stale or previously generated report without an explicit path provided via `JTEST_STATIC_BASE_REPORT` is strictly forbidden.
 
 ## How This Skill Works
 
@@ -151,7 +153,7 @@ If **no scope-limiting language** is present, set `JTEST_RESOURCE` to an empty s
 
 **If `JTEST_STATIC_BASE_REPORT` is set, skip this step entirely and proceed directly to Step 4.**
 
-Otherwise: set `JTEST_RESOURCE` to the comma-separated list of scope patterns derived from the user's request in Step 1 (e.g. `**/com/foo/**,**/Bar.java`), or an empty string if no scope was requested.
+Otherwise: **do NOT search for, open, or use any existing `report.xml` or similar file found anywhere in the project or filesystem.** The agent MUST run the `jtest-analyze` script to produce a fresh report. Set `JTEST_RESOURCE` to the comma-separated list of scope patterns derived from the user's request in Step 1 (e.g. `**/com/foo/**,**/Bar.java`), or an empty string if no scope was requested.
 
 Call the `jtest-analyze` script from `JTEST_STATIC_SCRIPT_DIR`. The following environment variables are already set and are available to the script: `JTEST_HOME`, `ANALYZED_PROJECT_PATH`, `JTEST_STATIC_CONFIGURATION`, `JTEST_SETTINGS`, `JTEST_RESOURCE`, `JTEST_REFERENCE_BRANCH`.
 
