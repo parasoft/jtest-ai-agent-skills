@@ -1,4 +1,4 @@
-﻿---
+---
 name: jtest-static-analysis
 description: Run Parasoft Jtest Static Analysis on Java projects, detect violations in user code, and provide fix recommendations. Use this skill when users want to analyze Java code quality, find bugs, security issues, or coding standard violations using Jtest.
 labels:
