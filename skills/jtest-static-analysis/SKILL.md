@@ -89,7 +89,7 @@ All workflow scripts (`build-verify`, `jtest-analyze`) are called through the `r
 | Windows (PowerShell) | `& "$env:JTEST_STATIC_SCRIPT_DIR\internal\run-script.ps1" -ScriptName <name>` |
 | Linux/macOS | `bash "$JTEST_STATIC_SCRIPT_DIR/internal/run-script.sh" <name>` |
 
-`run-script` locates `<JTEST_STATIC_SCRIPT_DIR>/<name>/<name>.<ext>`, prefers `.bat` over `.ps1` on Windows, and propagates the script's exit code unchanged. All subsequent steps use the shorthand `run-script <name>` — substitute the OS-appropriate command from the table above each time.
+`run-script` locates `<JTEST_STATIC_SCRIPT_DIR>/<name>/<name>.<ext>` and uses the variant appropriate to the calling shell: the PowerShell entrypoint (`internal\run-script.ps1`) is PowerShell-first (`.ps1` then `.bat`), while the cmd entrypoint (`internal\run-script.bat`) remains batch-first (`.bat` then `.ps1`). Linux/macOS behaviour is unchanged. It propagates the script's exit code unchanged. All subsequent steps use the shorthand `run-script <name>` — substitute the OS-appropriate command from the table above each time.
 
 > **Note:** `resolve-config` is **not** invoked via `run-script` because on Linux/macOS it must be *sourced* (`source ...`) to export variables into the calling shell.
 

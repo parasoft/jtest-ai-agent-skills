@@ -4,7 +4,7 @@ All Maven and Gradle invocations are always performed through two scripts locate
 
 ### Required Scripts
 
-| Script purpose | Windows (`.bat` preferred, `.ps1` fallback) | Linux/macOS |
+| Script purpose | Windows (PowerShell: `.ps1` then `.bat`; cmd: `.bat` then `.ps1`) | Linux/macOS |
 |---|---|---|
 | Resolve and validate configuration | `internal\resolve-config.bat` / `internal\resolve-config.ps1` | `internal/resolve-config.sh` |
 | Dispatch helper for workflow scripts | `internal\run-script.bat` / `internal\run-script.ps1` | `internal/run-script.sh` |
