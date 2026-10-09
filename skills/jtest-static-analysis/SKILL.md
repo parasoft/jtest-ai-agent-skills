@@ -67,9 +67,11 @@ All Maven and Gradle commands are executed exclusively through the `build-verify
 
 **If all violations have been fixed or are suppressed, do NOT rerun analysis under different conditions (e.g. a different test configuration, different scope, or different filter). Assume all work is done, stop immediately with success status and message: "No violations were found for the given scope".**
 
-**Each fix must be committed in its own separate git commit.** Never batch multiple violation fixes into a single commit. A commit must be created immediately after a fix is successfully verified, and before processing the next violation. Each commit must contain changes for exactly one violation only. Commit logic is handled by the `jtest-fix-violation` custom subagent. 
+**Each fix must be committed in its own separate git commit.** Never batch multiple violation fixes into a single commit. A commit must be created immediately after a fix is successfully verified, and before processing the next violation. Each commit must contain changes for exactly one violation only. Commit logic is handled by the `jtest-fix-violation` custom subagent.
 
 **MCP tool calls MUST be executed one at a time, strictly sequentially and synchronously.** Never invoke two or more MCP tools in parallel or in an overlapping manner. Each MCP tool call must fully complete and its result must be received before the next MCP tool call is initiated. This applies to all MCP tools used in this skill (e.g., `get_violations_from_report_file`, `get_rule_documentation`).
+
+**Equivalent (duplicate) violations MUST be collapsed before planning fixes.** Violations with the same source location and same message (even when reported under different standard-mapped rule IDs such as CWE/OWASP/CERT variants) represent one underlying issue and must be processed as a single fix unit.
 
 **Step 3 (Jtest Analysis) is skipped when `JTEST_STATIC_BASE_REPORT` is set** — that file is used directly as `baseline_report_path` and as the initial source of violations (Step 4). **If `JTEST_STATIC_BASE_REPORT` is not set, the skill MUST always run the full Jtest analysis first (Step 3) to produce the report before attempting to identify or fix any violations.** Never skip straight to fixing violations without a freshly generated or explicitly provided report.
 
@@ -143,13 +145,13 @@ If **no scope-limiting language** is present, set `JTEST_RESOURCE` to an empty s
 
 **Verify unit tests are passing** (compilation is performed implicitly as part of the test run)
 
-   Call the `build-verify` script from `JTEST_STATIC_SCRIPT_DIR`. The following environment variables are already set and are available to the script: `JTEST_HOME`, `ANALYZED_PROJECT_PATH`, `JTEST_STATIC_CONFIGURATION`, `JTEST_SETTINGS`, `JTEST_STATIC_BASE_REPORT`, `JTEST_STATIC_BASE_COVERAGE`, `JTEST_REFERENCE_BRANCH`.
+Call the `build-verify` script from `JTEST_STATIC_SCRIPT_DIR`. The following environment variables are already set and are available to the script: `JTEST_HOME`, `ANALYZED_PROJECT_PATH`, `JTEST_STATIC_CONFIGURATION`, `JTEST_SETTINGS`, `JTEST_STATIC_BASE_REPORT`, `JTEST_STATIC_BASE_COVERAGE`, `JTEST_REFERENCE_BRANCH`.
 
-   Run: `run-script build-verify`
+Run: `run-script build-verify`
 
-   The script handles build-system detection (Maven/Gradle) internally and automatically switches to TIA mode when both `JTEST_STATIC_BASE_REPORT` and `JTEST_STATIC_BASE_COVERAGE` are set. The script **must** exit with code `0` on success and a non-zero code on failure.
+The script handles build-system detection (Maven/Gradle) internally and automatically switches to TIA mode when both `JTEST_STATIC_BASE_REPORT` and `JTEST_STATIC_BASE_COVERAGE` are set. The script **must** exit with code `0` on success and a non-zero code on failure.
 
-   **If the script fails (non-zero exit code)**: print `ERROR: Project build or unit tests failed. Fix compilation errors or failing tests before running analysis.` followed by the script output, and terminate immediately.
+**If the script fails (non-zero exit code)**: print `ERROR: Project build or unit tests failed. Fix compilation errors or failing tests before running analysis.` followed by the script output, and terminate immediately.
 
 ### Step 3: Run Jtest Analysis
 
@@ -183,19 +185,21 @@ Call the MCP tool `get_violations_from_report_file` with `baseline_report_path` 
 **Important Notes:**
 - Paths to code files between `baseline_report_path` and the local repository may differ; find the best match yourself.
 - **Immediately discard any violation whose `suppressed` field is `true`. Suppressed violations must never be fixed or committed.**
+- **Build equivalence groups before planning fixes:** group violations by `(normalized source file path, line number, message)`. Treat each group as one fix candidate; keep one representative violation and store the rest as `equivalentViolationIds`.
 - **If there are no violations, stop immediately with success: "No violations were found for the given scope".**
 
 ### Step 5: Filter and Prioritize
 
 Process violations in the following deterministic order:
 1. **Exclude suppressed violations**: before any other filtering, remove all violations where the `suppressed` field is `true`. These are intentionally silenced by the project team and must not be touched.
-2. If any optional filter environment variables were set (`JTEST_STATIC_FILTER_RULE`), apply them exactly as specified.
-3. Otherwise, sort all remaining violations by severity (highest first: severity 1 > 2 > 3 > 4 > 5), then by file path alphabetically, then by line number **descending** (highest line number first). This bottom-to-top ordering within each file ensures that fixing a violation does not shift the line numbers of violations yet to be processed in the same file.
-4. **Resolve the effective fix limit**:
+2. **Collapse equivalents**: from the remaining list, build one fix unit per equivalence group (`source file + line + message`) and carry all grouped IDs as metadata for reporting.
+3. If any optional filter environment variables were set (`JTEST_STATIC_FILTER_RULE`), apply them to fix units (a unit matches when any member violation matches the filter).
+4. Otherwise, sort all remaining fix units by severity (highest first: severity 1 > 2 > 3 > 4 > 5), then by file path alphabetically, then by line number **descending** (highest line number first). This bottom-to-top ordering within each file ensures that fixing a violation does not shift the line numbers of violations yet to be processed in the same file.
+5. **Resolve the effective fix limit**:
    - Inspect the user's natural-language request for an explicit numeric fix limit (e.g. "fix 3 violations", "apply at most 5 fixes", "repair 2 issues"). If found, use that number as the effective limit.
    - Otherwise, use `JTEST_STATIC_NO_OF_MAX_FIXES` (default `10`) as the effective limit.
    - Initialize a `successful_fixes` counter to `0`.
-5. Process violations in this sorted order, one at a time.
+6. Process fix units in this sorted order, one at a time.
 
 ### Step 6: Fix, Verify, and Commit — Delegate to `jtest-fix-violation` Agent
 
@@ -224,7 +228,8 @@ For each violation or batch, spawn agent "jtest-fix-violation" and pass a task p
     "lineNumber": <line>,
     "message": "<message>",
     "severity": <severity>
-  }
+  },
+  "equivalentViolationIds": ["<id1>", "<id2>"]
 }
 ```
 
@@ -236,22 +241,24 @@ For each violation or batch, spawn agent "jtest-fix-violation" and pass a task p
   "scriptDir": "<JTEST_STATIC_SCRIPT_DIR>",
   "analyzedProjectPath": "<ANALYZED_PROJECT_PATH>",
   "commitFixes": <true|false>,
-  "violations": [ ... ]
+  "violations": [ ... ],
+  "equivalentViolationIds": ["<id1>", "<id2>"]
 }
 ```
 
-The agent performs all fix, verification, retry (up to 3 attempts), and optional commit logic autonomously. 
+The agent performs all fix, verification, retry (up to 3 attempts), and optional commit logic autonomously.
 
 #### Collecting Results
 
 Parse the `FIX_RESULT=` JSON line from the agent's output. Update counters:
 
 - If `status` is `"SUCCESS"`: increment `successful_fixes` by `violationsFixed`. If `successful_fixes` ≥ the effective fix limit, print `Fix limit of [N] reached. Proceeding to summary.` and proceed immediately to Step 7.
-- If `status` is `"FAILURE"`: record the failure and move on to the next violation.
+- If `status` is `"FAILURE"`: record the failure and move on to the next fix unit.
+- For reporting, a successful fix of one representative is expected to remove its equivalent violations in the same group; do not enqueue those equivalents as separate follow-up work.
 
 #### Processing Order
 
-Process violations in the sorted order from Step 5, one agent invocation at a time. **Do not invoke multiple `jtest-fix-violation` agents in parallel** — each must complete before the next begins (to avoid git conflicts and ensure line-number stability).
+Process fix units in the sorted order from Step 5, one agent invocation at a time. **Do not invoke multiple `jtest-fix-violation` agents in parallel** — each must complete before the next begins (to avoid git conflicts and ensure line-number stability).
 
 ### Step 7: Summary
 
@@ -259,6 +266,7 @@ Report:
 - Total fixes attempted
 - Successful fixes
 - Failures
+- Equivalent violation IDs covered by each successful fix (optional, for traceability)
 - Files with uncommitted local changes (if committing was not requested)
 - Successful commits (if committing was requested)
 
