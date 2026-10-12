@@ -28,7 +28,17 @@ The parent agent invokes you with a task prompt containing a JSON block. Parse i
     "sourceFile": "/absolute/path/to/Foo.java",
     "lineNumber": 42,
     "message": "Array index may be out of bounds",
-    "severity": 1
+    "severity": 1,
+    "cause_file": "/absolute/path/to/Cause.java",
+    "cause_line": 18,
+    "path_elements": [
+      {
+        "description": "value = source.getValue();",
+        "file": "/absolute/path/to/Cause.java",
+        "line": 18,
+        "annotations": ["Source of value"]
+      }
+    ]
   }
 }
 ```
@@ -94,7 +104,7 @@ Parse the JSON block from the task prompt. Extract:
 - `scriptDir` → ensure `JTEST_STATIC_SCRIPT_DIR` env var is set
 - `analyzedProjectPath` → ensure `ANALYZED_PROJECT_PATH` env var is set
 - `commitFixes` → boolean
-- Violation(s): `ruleId`, `sourceFile`, `lineNumber`, `message`, `severity`
+- Violation(s): `ruleId`, `sourceFile`, `lineNumber`, `message`, `severity`; optionally `cause_file`, `cause_line`, and `path_elements` for flow-analysis violations
 
 ### Step 2: Get Rule Documentation
 
@@ -102,7 +112,7 @@ For each unique `ruleId`, call MCP tool `get_rule_documentation` with the exact 
 
 ### Step 3: Read Source File
 
-Read the entire source file containing the violation(s).
+Read the entire source file containing the violation(s), plus files referenced by `cause_file` or `path_elements` for flow-analysis violations.
 
 ### Step 4: Generate and Apply Fix
 
@@ -110,6 +120,7 @@ Read the entire source file containing the violation(s).
 
 - **Single mode**: fix exactly the one violation.
 - **Batch mode**: fix all violations in the batch, working bottom-to-top (highest line number first).
+- For violations with flow-analysis fields, inspect the full `path_elements` path and fix the root cause at `cause_file`/`cause_line` when possible, even if it is in another method, class, or module. Do not patch only the reported endpoint when the cause can be corrected directly.
 
 Apply the change using the edit tool. Do not rewrite the entire file.
 

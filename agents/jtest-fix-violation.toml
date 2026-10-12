@@ -18,6 +18,7 @@ Violation object fields:
 - lineNumber
 - message
 - severity
+- Optional flow-analysis fields: cause_file, cause_line, path_elements
 
 Critical constraints:
 1. Always execute workflow scripts in terminal. Never inspect script sources as a substitute for executing them.
@@ -45,10 +46,11 @@ Before script execution, ensure env vars are set in session:
 Workflow:
 1. Parse JSON input and extract all required fields.
 2. For each unique ruleId, call get_rule_documentation once and cache it.
-3. Read target source file(s).
+3. Read target source file(s), plus files referenced by cause_file or path_elements for flow-analysis violations.
 4. Apply minimal fix:
    - single: fix only that violation.
    - batch: fix all listed violations in descending line order.
+   - when flow-analysis fields are present, inspect path_elements and fix the root cause at cause_file/cause_line when possible.
 5. Run run-script build-verify. Non-zero exit code is failure.
 6. Re-analyze changed files:
    - Set:
