@@ -186,6 +186,7 @@ Call the MCP tool `get_violations_from_report_file` with `baseline_report_path` 
 - Paths to code files between `baseline_report_path` and the local repository may differ; find the best match yourself.
 - **Immediately discard any violation whose `suppressed` field is `true`. Suppressed violations must never be fixed or committed.**
 - **Build equivalence groups before planning fixes:** group violations by `(normalized source file path, line number, message)`. Treat each group as one fix candidate; keep one representative violation and store the rest as `equivalentViolationIds`.
+- **Use flow-analysis data when present:** violations that include `cause_file`, `cause_line`, or `path_elements` are flow-analysis violations; ordinary violations may not include these fields. Inspect the complete `path_elements` path and prefer fixing the reported cause (`cause_file`/`cause_line`) rather than the final reported location. The cause may be in another method, class, or module. Identify violations with a shared cause and prefer one verified root-cause fix; do not separately fix related violations that the fix resolves.
 - **If there are no violations, stop immediately with success: "No violations were found for the given scope".**
 
 ### Step 5: Filter and Prioritize
@@ -232,6 +233,8 @@ For each violation or batch, spawn agent "jtest-fix-violation" and pass a task p
   "equivalentViolationIds": ["<id1>", "<id2>"]
 }
 ```
+
+For flow-analysis violations, also pass the optional `cause_file`, `cause_line`, and `path_elements` fields exactly as returned by `get_violations_from_report_file`; omit them for violations where they are absent.
 
 **Batch (simple) violations — same file, pre-sorted line-descending:**
 ```json
